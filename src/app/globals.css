@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 205, 217, 229;
+  --background-rgb: 13, 17, 23;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #0d1117;
+  color: #cdd9e5;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #161b22; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #484f58; }
+
+/* ── Entrance / ambient animations ──────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.08; }
+  50%       { opacity: 0.18; }
+}
+.animate-fade-up          { animation: fade-up 0.45s ease-out forwards; }
+.animate-fade-up-delay    { animation: fade-up 0.45s ease-out 0.12s forwards; opacity: 0; }
+.animate-fade-up-delay-2  { animation: fade-up 0.45s ease-out 0.25s forwards; opacity: 0; }
+.glow-breathe             { animation: glow-breathe 6s ease-in-out infinite; }
+
+/* Markdown prose overrides */
+.prose { color: #cdd9e5; }
+.prose h1, .prose h2, .prose h3, .prose h4 { color: #cdd9e5; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; margin-top: 1.5em; }
+.prose a { color: #58a6ff; text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+.prose code { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 0.1em 0.4em; font-size: 0.875em; color: #e6edf3; }
+.prose pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; overflow-x: auto; }
+.prose pre code { background: none; border: none; padding: 0; }
+.prose blockquote { border-left: 4px solid #30363d; padding-left: 1rem; color: #768390; }
+.prose img { border-radius: 4px; max-width: 100%; }
+.prose hr { border-color: #30363d; }
+.prose table { width: 100%; border-collapse: collapse; }
+.prose th, .prose td { border: 1px solid #30363d; padding: 0.5rem 0.75rem; }
+.prose th { background: #161b22; font-weight: 600; }
+.prose tr:nth-child(even) { background: #161b22; }

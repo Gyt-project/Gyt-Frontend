@@ -1,0 +1,86 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { GitBranch, ChevronDown, Check } from 'lucide-react';
+import { Branch } from '@/types';
+import { clsx } from 'clsx';
+
+interface BranchSelectorProps {
+  branches: Branch[];
+  currentBranch: string;
+  owner: string;
+  repo: string;
+  currentPath?: string;
+}
+
+export default function BranchSelector({
+  branches,
+  currentBranch,
+  owner,
+  repo,
+  currentPath,
+}: BranchSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const router = useRouter();
+
+  const filtered = branches.filter((b) =>
+    b.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const select = (branchName: string) => {
+    setOpen(false);
+    const path = currentPath ? `&path=${encodeURIComponent(currentPath)}` : '';
+    router.push(`/${owner}/${repo}?ref=${branchName}${path}`);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 px-3 py-1.5 bg-canvas-subtle border border-border rounded-md text-sm text-fg hover:bg-canvas-overlay transition-colors"
+      >
+        <GitBranch size={14} className="text-fg-muted" />
+        <span className="font-medium max-w-[120px] truncate">{currentBranch}</span>
+        <ChevronDown size={14} className="text-fg-muted" />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-20 w-64 bg-canvas-overlay border border-border rounded-md shadow-xl">
+            <div className="p-2 border-b border-border">
+              <input
+                autoFocus
+                placeholder="Filter branches…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-2 py-1 text-sm bg-canvas border border-border rounded text-fg placeholder-fg-subtle focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-fg-muted">No branches found</p>
+              ) : (
+                filtered.map((b) => (
+                  <button
+                    key={b.name}
+                    onClick={() => select(b.name)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-fg hover:bg-canvas-subtle transition-colors"
+                  >
+                    <Check
+                      size={12}
+                      className={clsx(b.name === currentBranch ? 'text-accent-fg' : 'invisible')}
+                    />
+                    <span className="truncate">{b.name}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
