@@ -5,18 +5,20 @@ import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client';
 import {
   GitMerge, GitPullRequest, XCircle, CircleDot, MessageSquare,
-  GitCommit, CheckCircle2, AlertCircle,
+  GitCommit, CheckCircle2, AlertCircle, Pencil, Check, X,
 } from 'lucide-react';
 import {
-  GET_PULL_REQUEST, GET_PR_DIFF, LIST_PR_COMMENTS, LIST_PR_REVIEWS, GET_REPOSITORY,
+  GET_PULL_REQUEST, GET_PR_DIFF, LIST_PR_COMMENTS, LIST_PR_REVIEWS, GET_REPOSITORY, LIST_BRANCHES,
 } from '@/graphql/queries';
 import {
   MERGE_PULL_REQUEST, CLOSE_PULL_REQUEST, REOPEN_PULL_REQUEST,
   CREATE_PR_COMMENT, CREATE_PR_REVIEW, UPDATE_PR_COMMENT, DELETE_PR_COMMENT,
+  UPDATE_PULL_REQUEST,
 } from '@/graphql/mutations';
 import {
   PullRequest, FileDiff, PRComment, PRReview,
   ListPRCommentsResponse, ListPRReviewsResponse, Repository,
+  CompareResponse, Branch, ListBranchesResponse,
 } from '@/types';
 import RepoLayout from '@/components/layout/RepoLayout';
 import FileDiffList from '@/components/repo/FileDiffList';
@@ -41,6 +43,8 @@ export default function PullRequestPage() {
   const [reviewState, setReviewState] = useState<'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED'>('COMMENTED');
   const [mergeMethod, setMergeMethod] = useState<'merge' | 'squash' | 'rebase'>('merge');
   const [activeTab, setActiveTab] = useState<'conversation' | 'diff'>('conversation');
+  const [editingBase, setEditingBase] = useState(false);
+  const [newBase, setNewBase] = useState('');
 
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: repo },
@@ -49,9 +53,13 @@ export default function PullRequestPage() {
     GET_PULL_REQUEST,
     { variables: { owner: username, repo, number: prNumber } }
   );
-  const { data: diffData, loading: loadingDiff } = useQuery<{ getPRDiff: FileDiff[] }>(
+  const { data: diffData, loading: loadingDiff } = useQuery<{ getPullRequestDiff: CompareResponse }>(
     GET_PR_DIFF,
-    { variables: { owner: username, repo, number: prNumber }, skip: activeTab !== 'diff' }
+    { variables: { owner: username, repo, number: prNumber } }
+  );
+  const { data: branchesData } = useQuery<{ listBranches: ListBranchesResponse }>(
+    LIST_BRANCHES,
+    { variables: { owner: username, name: repo }, skip: !editingBase }
   );
   const { data: commentsData, refetch: refetchComments } = useQuery<{
     listPRComments: ListPRCommentsResponse;
@@ -76,6 +84,9 @@ export default function PullRequestPage() {
   const [deleteComment] = useMutation(DELETE_PR_COMMENT, { onCompleted: () => refetchComments() });
   const [submitReview, { loading: submittingReview }] = useMutation(CREATE_PR_REVIEW, {
     onCompleted: () => { setReviewBody(''); refetchReviews(); },
+  });
+  const [updatePR, { loading: updatingBase }] = useMutation(UPDATE_PULL_REQUEST, {
+    onCompleted: () => { setEditingBase(false); refetchPR(); },
   });
 
   const pr = prData?.getPullRequest;
@@ -110,21 +121,67 @@ export default function PullRequestPage() {
                   {stateInfo.icon} {stateInfo.label}
                 </span>
               )}
-              <span>
+              <span className="flex items-center gap-1 flex-wrap">
                 {pr.author?.username} wants to merge{' '}
                 <code className="bg-canvas-subtle px-1 rounded text-xs">{pr.headBranch}</code>
                 {' → '}
-                <code className="bg-canvas-subtle px-1 rounded text-xs">{pr.baseBranch}</code>
+                {editingBase ? (
+                  <span className="flex items-center gap-1">
+                    <select
+                      value={newBase}
+                      onChange={(e) => setNewBase(e.target.value)}
+                      className="bg-canvas border border-border rounded px-1.5 py-0.5 text-xs text-fg focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      {branchesData?.listBranches.branches?.map((b) => (
+                        <option key={b.name} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      disabled={updatingBase || !newBase}
+                      onClick={() => updatePR({ variables: { input: { owner: username, repo, number: prNumber, base: newBase } } })}
+                      className="text-success-fg hover:text-success-fg/80 disabled:opacity-50"
+                      title="Confirm"
+                    >
+                      <Check size={14} />
+                    </button>
+                    <button
+                      onClick={() => setEditingBase(false)}
+                      className="text-danger-fg hover:text-danger-fg/80"
+                      title="Cancel"
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-0.5">
+                    <code className="bg-canvas-subtle px-1 rounded text-xs">{pr.baseBranch}</code>
+                    {isRepoOwner && pr.state === 'open' && !pr.merged && (
+                      <button
+                        onClick={() => { setNewBase(pr.baseBranch); setEditingBase(true); }}
+                        className="text-fg-muted hover:text-fg ml-0.5"
+                        title="Change base branch"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                    )}
+                  </span>
+                )}
               </span>
               <span>· {formatRelativeTime(pr.createdAt)}</span>
             </div>
 
             {/* Stats */}
             <div className="flex gap-3 text-xs text-fg-muted pt-1">
-              <span className="flex items-center gap-1"><GitCommit size={12} /> {pr.commits} commit{pr.commits !== 1 ? 's' : ''}</span>
-              <span className="text-success-fg">+{pr.additions}</span>
-              <span className="text-danger-fg">-{pr.deletions}</span>
-              <span>{pr.changedFiles} file{pr.changedFiles !== 1 ? 's' : ''} changed</span>
+              {loadingDiff ? (
+                <span className="italic">Loading stats…</span>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1"><GitCommit size={12} /> {diffData?.getPullRequestDiff?.commitsAhead ?? 0} commit{(diffData?.getPullRequestDiff?.commitsAhead ?? 0) !== 1 ? 's' : ''}</span>
+                  <span className="text-success-fg">+{diffData?.getPullRequestDiff?.totalAdditions ?? 0}</span>
+                  <span className="text-danger-fg">-{diffData?.getPullRequestDiff?.totalDeletions ?? 0}</span>
+                  <span>{diffData?.getPullRequestDiff?.filesChanged ?? 0} file{(diffData?.getPullRequestDiff?.filesChanged ?? 0) !== 1 ? 's' : ''} changed</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -374,7 +431,7 @@ export default function PullRequestPage() {
               {loadingDiff ? (
                 <div className="flex justify-center py-12"><Spinner size="lg" /></div>
               ) : (
-                <FileDiffList files={diffData?.getPRDiff ?? []} />
+                <FileDiffList files={diffData?.getPullRequestDiff?.files ?? []} patch={diffData?.getPullRequestDiff?.patch} />
               )}
             </div>
           )}

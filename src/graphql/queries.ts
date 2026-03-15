@@ -185,6 +185,7 @@ export const COMPARE_BRANCHES = gql`
       commits { ${COMMIT_FIELDS} }
       files { ${FILE_DIFF_FIELDS} }
       totalAdditions totalDeletions filesChanged commitsAhead
+      patch
     }
   }
 `;
@@ -366,6 +367,7 @@ export const GET_PR_DIFF = gql`
       commits { ${COMMIT_FIELDS} }
       files { ${FILE_DIFF_FIELDS} }
       totalAdditions totalDeletions filesChanged commitsAhead
+      patch
     }
   }
 `;

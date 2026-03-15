@@ -13,11 +13,28 @@ function LabelPill({ label }: { label: Label }) {
   const bg = `#${label.color}`;
   return (
     <span
-      className="px-1.5 py-0.5 rounded-full text-xs font-medium"
-      style={{ backgroundColor: bg + '33', color: bg, border: `1px solid ${bg}66` }}
+      className="px-2 py-0.5 rounded-full text-xs font-medium leading-tight"
+      style={{ backgroundColor: bg + '22', color: bg, border: `1px solid ${bg}44` }}
     >
       {label.name}
     </span>
+  );
+}
+
+function AssigneeAvatars({ users }: { users: { username: string }[] }) {
+  return (
+    <div className="flex items-center -space-x-1.5">
+      {users.slice(0, 3).map((u) => (
+        <Link
+          key={u.username}
+          href={`/${u.username}`}
+          title={u.username}
+          className="block w-5 h-5 rounded-full bg-canvas-overlay border border-border flex items-center justify-center text-[9px] font-bold text-fg-muted uppercase ring-1 ring-canvas-default hover:z-10 transition-transform hover:scale-110"
+        >
+          {u.username[0]}
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -25,39 +42,48 @@ export default function IssueListItem({ issue, owner, repo }: IssueListItemProps
   const isOpen = issue.state === 'open';
 
   return (
-    <div className="flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-canvas-subtle/50 transition-colors">
+    <div className="flex items-start gap-3 px-4 py-3 hover:bg-canvas-subtle transition-colors">
       {isOpen ? (
-        <CircleDot size={16} className="text-success-fg flex-shrink-0 mt-0.5" />
+        <CircleDot size={16} className="text-success-fg shrink-0 mt-0.5" />
       ) : (
-        <CheckCircle2 size={16} className="text-purple-fg flex-shrink-0 mt-0.5" />
+        <CheckCircle2 size={16} className="text-purple-fg shrink-0 mt-0.5" />
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <Link
             href={`/${owner}/${repo}/issues/${issue.number}`}
-            className="text-sm font-medium text-fg hover:text-accent-fg hover:underline"
+            className="text-sm font-semibold text-fg hover:text-blue-400 transition-colors"
           >
             {issue.title}
           </Link>
-          {issue.labels.map((l) => (
-            <LabelPill key={l.id} label={l} />
-          ))}
+          {issue.labels.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {issue.labels.map((l) => <LabelPill key={l.id} label={l} />)}
+            </div>
+          )}
         </div>
         <p className="text-xs text-fg-muted mt-0.5">
-          #{issue.number} opened {formatRelativeTime(issue.createdAt)} by{' '}
-          <Link href={`/${issue.author.username}`} className="hover:text-accent-fg transition-colors">
+          #{issue.number} {isOpen ? 'opened' : 'closed'}{' '}
+          {formatRelativeTime(issue.createdAt)} by{' '}
+          <Link href={`/${issue.author.username}`} className="font-medium hover:underline">
             {issue.author.username}
           </Link>
         </p>
       </div>
 
-      {issue.commentCount > 0 && (
-        <div className="flex items-center gap-1 text-xs text-fg-muted flex-shrink-0">
-          <MessageSquare size={12} />
-          {issue.commentCount}
-        </div>
-      )}
+      <div className="flex items-center gap-3 shrink-0 ml-2">
+        {issue.assignees.length > 0 && <AssigneeAvatars users={issue.assignees} />}
+        {issue.commentCount > 0 && (
+          <Link
+            href={`/${owner}/${repo}/issues/${issue.number}`}
+            className="flex items-center gap-1 text-xs text-fg-muted hover:text-fg transition-colors"
+          >
+            <MessageSquare size={13} />
+            <span>{issue.commentCount}</span>
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

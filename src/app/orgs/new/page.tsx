@@ -44,12 +44,28 @@ export default function NewOrgPage() {
 
   return (
     <PageLayout>
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <Building2 size={24} className="text-fg-muted" />
-          <h1 className="text-xl font-bold text-fg">Create a new organization</h1>
+      {/* Page header */}
+      <section className="relative border-b border-border overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(#cdd9e5 1px,transparent 1px),linear-gradient(90deg,#cdd9e5 1px,transparent 1px)',
+            backgroundSize: '48px 48px',
+          }}
+        />
+        <div className="absolute top-0 right-0 w-[450px] h-[180px] bg-accent/10 rounded-full blur-3xl pointer-events-none glow-breathe" />
+        <div className="relative max-w-lg mx-auto px-4 py-8">
+          <div className="flex items-center gap-3">
+            <Building2 size={20} className="text-accent-fg" />
+            <div>
+              <h1 className="text-2xl font-bold text-fg">Create a new organization</h1>
+              <p className="text-sm text-fg-muted mt-0.5">Organizations let you collaborate on projects with multiple members.</p>
+            </div>
+          </div>
         </div>
+      </section>
 
+      <div className="max-w-lg mx-auto px-4 py-8">
         <form onSubmit={submit} className="space-y-5">
           {error && (
             <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">

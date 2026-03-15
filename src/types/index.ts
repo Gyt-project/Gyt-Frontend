@@ -178,6 +178,7 @@ export interface CompareResponse {
   totalDeletions: number;
   filesChanged: number;
   commitsAhead: number;
+  patch: string;
 }
 
 export interface Collaborator {

@@ -69,12 +69,28 @@ export default function NewRepoPage() {
 
   return (
     <PageLayout>
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <BookMarked size={24} className="text-fg-muted" />
-          <h1 className="text-xl font-bold text-fg">Create a new repository</h1>
+      {/* Page header */}
+      <section className="relative border-b border-border overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(#cdd9e5 1px,transparent 1px),linear-gradient(90deg,#cdd9e5 1px,transparent 1px)',
+            backgroundSize: '48px 48px',
+          }}
+        />
+        <div className="absolute top-0 right-0 w-[450px] h-[180px] bg-accent/10 rounded-full blur-3xl pointer-events-none glow-breathe" />
+        <div className="relative max-w-2xl mx-auto px-4 py-8">
+          <div className="flex items-center gap-3">
+            <BookMarked size={20} className="text-accent-fg" />
+            <div>
+              <h1 className="text-2xl font-bold text-fg">Create a new repository</h1>
+              <p className="text-sm text-fg-muted mt-0.5">A repository contains all project files, including the revision history.</p>
+            </div>
+          </div>
         </div>
+      </section>
 
+      <div className="max-w-2xl mx-auto px-4 py-8">
         <form onSubmit={submit} className="space-y-6">
           {error && (
             <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">

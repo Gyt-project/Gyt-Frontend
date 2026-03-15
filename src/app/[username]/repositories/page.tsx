@@ -40,23 +40,33 @@ function UserRepositoriesContent() {
 
   return (
     <PageLayout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Back link */}
-        <Link href={`/${username}`} className="flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg mb-6 w-fit">
-          <ArrowLeft size={14} />
-          Back to profile
-        </Link>
-
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          {user && (
-            <Avatar src={user.avatarUrl} name={user.displayName || user.username} size={32} />
-          )}
-          <h1 className="text-xl font-semibold text-fg">
-            {username}&apos;s repositories
-          </h1>
+      {/* Page header */}
+      <section className="relative border-b border-border overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(#cdd9e5 1px,transparent 1px),linear-gradient(90deg,#cdd9e5 1px,transparent 1px)',
+            backgroundSize: '48px 48px',
+          }}
+        />
+        <div className="absolute top-0 right-0 w-[450px] h-[180px] bg-accent/10 rounded-full blur-3xl pointer-events-none glow-breathe" />
+        <div className="relative max-w-4xl mx-auto px-4 py-8">
+          <Link href={`/${username}`} className="flex items-center gap-1.5 text-sm text-fg-muted hover:text-fg mb-4 w-fit">
+            <ArrowLeft size={13} />
+            Back to profile
+          </Link>
+          <div className="flex items-center gap-3">
+            {user && (
+              <Avatar src={user.avatarUrl} name={user.displayName || user.username} size={32} />
+            )}
+            <h1 className="text-2xl font-bold text-fg">
+              {username}&apos;s repositories
+            </h1>
+          </div>
         </div>
+      </section>
 
+      <div className="max-w-4xl mx-auto px-4 py-8">
         {loading && (
           <div className="flex justify-center py-12"><Spinner size="lg" /></div>
         )}

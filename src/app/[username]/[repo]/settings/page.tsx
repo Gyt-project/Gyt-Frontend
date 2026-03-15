@@ -54,7 +54,7 @@ export default function RepoSettingsPage() {
   const { data: webhooksData, refetch: refetchWebhooks } = useQuery<{
     listWebhooks: ListWebhooksResponse;
   }>(LIST_WEBHOOKS, {
-    variables: { owner: username, name: repo },
+    variables: { owner: username, repo },
     skip: section !== 'Webhooks',
   });
 
@@ -370,7 +370,7 @@ function WebhooksSection({
   const [showCreate, setShowCreate] = useState(false);
   const [url, setUrl] = useState('');
   const [events, setEvents] = useState<string[]>(['push']);
-  const [contentType, setContentType] = useState('application/json');
+  const [contentType, setContentType] = useState('json');
 
   const [createWebhook, { loading: creating }] = useMutation(CREATE_WEBHOOK, {
     onCompleted: () => { onChanged(); setShowCreate(false); setUrl(''); setEvents(['push']); },
@@ -441,8 +441,8 @@ function WebhooksSection({
               onChange={(e) => setContentType(e.target.value)}
               className="bg-canvas border border-border rounded-md px-3 py-2 text-sm text-fg focus:outline-none"
             >
-              <option value="application/json">application/json</option>
-              <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+              <option value="json">application/json</option>
+              <option value="form">application/x-www-form-urlencoded</option>
             </select>
           </div>
           <div>

@@ -241,6 +241,7 @@ type CompareResponse {
   totalDeletions:  Int!
   filesChanged:    Int!
   commitsAhead:    Int!
+  patch:           String!
 }
 
 type FileHistoryResponse {

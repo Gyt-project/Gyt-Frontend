@@ -94,6 +94,20 @@ export const SET_DEFAULT_BRANCH = gql`
   }
 `;
 
+export const CREATE_BRANCH = gql`
+  mutation CreateBranch($owner: String!, $name: String!, $branchName: String!, $source: String!) {
+    createBranch(owner: $owner, name: $name, branchName: $branchName, source: $source) {
+      name fullName commitSha
+    }
+  }
+`;
+
+export const DELETE_BRANCH = gql`
+  mutation DeleteBranch($owner: String!, $name: String!, $branchName: String!) {
+    deleteBranch(owner: $owner, name: $name, branchName: $branchName)
+  }
+`;
+
 export const CREATE_TAG = gql`
   mutation CreateTag($input: CreateTagInput!) {
     createTag(input: $input) {
@@ -305,7 +319,7 @@ export const CREATE_PULL_REQUEST = gql`
 export const UPDATE_PULL_REQUEST = gql`
   mutation UpdatePullRequest($input: UpdatePRInput!) {
     updatePullRequest(input: $input) {
-      id number title body state
+      id number title body state baseBranch headBranch
     }
   }
 `;

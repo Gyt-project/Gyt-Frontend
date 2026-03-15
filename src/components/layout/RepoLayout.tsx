@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import PageLayout from './PageLayout';
 import { Repository } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 interface RepoLayoutProps {
   owner: string;
@@ -18,19 +19,23 @@ interface RepoLayoutProps {
   children: ReactNode;
 }
 
-const tabs = [
+const baseTabs = [
   { label: 'Code', href: '', icon: <Code2 size={14} /> },
   { label: 'Issues', href: '/issues', icon: <CircleDot size={14} /> },
   { label: 'Pull Requests', href: '/pulls', icon: <GitPullRequest size={14} /> },
   { label: 'Commits', href: '/commits', icon: <GitCommitHorizontal size={14} /> },
   { label: 'Branches', href: '/branches', icon: <GitBranch size={14} /> },
   { label: 'Tags', href: '/tags', icon: <Tag size={14} /> },
-  { label: 'Settings', href: '/settings', icon: <Settings size={14} /> },
 ];
 
 export default function RepoLayout({ owner, repo, repository, children }: RepoLayoutProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const base = `/${owner}/${repo}`;
+
+  const tabs = user?.username === owner
+    ? [...baseTabs, { label: 'Settings', href: '/settings', icon: <Settings size={14} /> }]
+    : baseTabs;
 
   return (
     <PageLayout>

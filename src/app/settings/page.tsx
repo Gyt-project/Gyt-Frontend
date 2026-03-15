@@ -67,15 +67,28 @@ export default function SettingsPage() {
 
   return (
     <PageLayout>
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <UserIcon size={22} className="text-fg-muted" />
-          <div>
-            <h1 className="text-xl font-bold text-fg">Public Profile</h1>
-            <p className="text-sm text-fg-muted">Update your profile information</p>
+      {/* Page header */}
+      <section className="relative border-b border-border overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(#cdd9e5 1px,transparent 1px),linear-gradient(90deg,#cdd9e5 1px,transparent 1px)',
+            backgroundSize: '48px 48px',
+          }}
+        />
+        <div className="absolute top-0 right-0 w-[450px] h-[180px] bg-accent/10 rounded-full blur-3xl pointer-events-none glow-breathe" />
+        <div className="relative max-w-3xl mx-auto px-4 py-8">
+          <div className="flex items-center gap-3">
+            <UserIcon size={20} className="text-accent-fg" />
+            <div>
+              <h1 className="text-2xl font-bold text-fg">Public Profile</h1>
+              <p className="text-sm text-fg-muted mt-0.5">Update your public profile information</p>
+            </div>
           </div>
         </div>
+      </section>
 
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Avatar */}
           <div className="flex flex-col items-center gap-3">
