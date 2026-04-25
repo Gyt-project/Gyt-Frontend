@@ -6,7 +6,7 @@ import { ReactNode } from 'react';
 import { clsx } from 'clsx';
 import {
   Code2, GitCommitHorizontal, GitBranch, Tag,
-  CircleDot, GitPullRequest, Settings, BookMarked,
+  CircleDot, GitPullRequest, Settings, BookMarked, Tags,
 } from 'lucide-react';
 import PageLayout from './PageLayout';
 import { Repository } from '@/types';
@@ -26,6 +26,7 @@ const baseTabs = [
   { label: 'Commits', href: '/commits', icon: <GitCommitHorizontal size={14} /> },
   { label: 'Branches', href: '/branches', icon: <GitBranch size={14} /> },
   { label: 'Tags', href: '/tags', icon: <Tag size={14} /> },
+  { label: 'Labels', href: '/labels', icon: <Tags size={14} /> },
 ];
 
 export default function RepoLayout({ owner, repo, repository, children }: RepoLayoutProps) {

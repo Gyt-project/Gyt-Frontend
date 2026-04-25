@@ -23,7 +23,6 @@ export default function NewIssuePage() {
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [assignee, setAssignee] = useState('');
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
 
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
@@ -56,7 +55,6 @@ export default function NewIssuePage() {
           repo,
           title,
           body: body || undefined,
-          assignees: assignee ? [assignee] : undefined,
           labels: selectedLabels.length ? selectedLabels : undefined,
         },
       },
@@ -109,15 +107,6 @@ export default function NewIssuePage() {
               </div>
             </div>
           )}
-
-          {/* Assignee */}
-          <Input
-            label="Assignee (optional)"
-            value={assignee}
-            onChange={(e) => setAssignee(e.target.value)}
-            placeholder="Username"
-          />
-
           <div className="flex gap-2 justify-end pt-2">
             <Button type="button" onClick={() => router.back()}>Cancel</Button>
             <Button type="submit" variant="primary" loading={loading} disabled={!title.trim()}>
