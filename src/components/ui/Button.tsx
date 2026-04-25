@@ -5,7 +5,7 @@ import { clsx } from 'clsx';
 import Spinner from './Spinner';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'success';
   size?: 'xs' | 'sm' | 'md' | 'lg';
   loading?: boolean;
   icon?: ReactNode;
@@ -45,6 +45,8 @@ export default function Button({
             variant === 'ghost',
           'bg-transparent border-border text-fg hover:border-accent-fg hover:text-accent-fg':
             variant === 'outline',
+          'bg-[#2ea043] hover:bg-[#3fb950] border-transparent text-white':
+            variant === 'success',
         },
         className
       )}

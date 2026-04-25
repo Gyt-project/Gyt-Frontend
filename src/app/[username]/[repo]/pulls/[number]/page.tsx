@@ -257,6 +257,17 @@ export default function PullRequestPage() {
     return Array.from(map.values());
   }, [reviews]);
 
+  // Whether the current user has already submitted a review on this PR.
+  const hasAlreadyReviewed = uniqueReviewers.some((r) => r.reviewer.username === user?.username);
+  // Whether the current user was explicitly requested to review and hasn't yet.
+  const isRequestedReviewer =
+    !hasAlreadyReviewed &&
+    (reviewRequestsData?.listReviewRequests?.requests ?? []).some(
+      (req) => req.reviewer.username === user?.username
+    );
+  // Show the reviewer CTA only when the PR is open, the user is logged in, and is a reviewer.
+  const showReviewCTA = !!user && !!pr && pr.state === 'open' && !pr.merged && isRequestedReviewer;
+
   const diffFiles = diffData?.getPullRequestDiff?.files ?? [];
   const diffPatch = diffData?.getPullRequestDiff?.patch;
   const commits: Commit[] = diffData?.getPullRequestDiff?.commits ?? [];
@@ -570,6 +581,29 @@ export default function PullRequestPage() {
                     </div>
                   );
                 })}
+
+                {/* Your review was requested — CTA banner */}
+                {showReviewCTA && (
+                  <div className="border border-[#2ea043]/50 bg-[#1a3628] rounded-md p-4 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-[#2ea043]/20 border border-[#2ea043]/50 flex items-center justify-center flex-shrink-0">
+                      <Eye size={16} className="text-[#3fb950]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-fg">Your review was requested</p>
+                      <p className="text-xs text-fg-muted mt-0.5">
+                        Review the changed files and submit your feedback.
+                      </p>
+                    </div>
+                    <Button
+                      variant="success"
+                      size="sm"
+                      className="flex-shrink-0"
+                      onClick={() => { setActiveTab('files'); setReviewPanelOpen(true); }}
+                    >
+                      <Eye size={13} className="mr-1" /> Add your review
+                    </Button>
+                  </div>
+                )}
 
                 {/* Merge box */}
                 {canWrite && pr.state === 'open' && !pr.merged && (
@@ -934,11 +968,15 @@ export default function PullRequestPage() {
                 <div className="flex justify-end">
                   <div className="relative">
                     <Button
-                      variant="secondary"
+                      variant={isRequestedReviewer ? 'success' : 'secondary'}
                       size="sm"
                       onClick={() => setReviewPanelOpen((o) => !o)}
                     >
-                      Review changes <ChevronDown size={13} className="ml-1" />
+                      {isRequestedReviewer ? (
+                        <><Eye size={13} className="mr-1" /> Add your review</>
+                      ) : (
+                        <>Review changes <ChevronDown size={13} className="ml-1" /></>
+                      )}
                     </Button>
                     {reviewPanelOpen && (
                       <div className="absolute right-0 top-full mt-1.5 w-[440px] bg-canvas border border-border rounded-md shadow-xl z-20 overflow-hidden">
