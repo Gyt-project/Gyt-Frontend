@@ -158,15 +158,19 @@ function RepoContent() {
   const path = searchParams.get('path') ?? '';
 
   const { data: repoData, loading: repoLoading } = useQuery<{ getRepository: Repository }>(
-    GET_REPOSITORY, { variables: { owner: username, name: repo } }
+    GET_REPOSITORY, { variables: { owner: username, name: repo }, context: { triggerNotFoundOn404: true } }
   );
 
   const { data: branchData } = useQuery<{ getDefaultBranch: DefaultBranchResponse }>(
-    GET_DEFAULT_BRANCH, { variables: { owner: username, name: repo } }
+    GET_DEFAULT_BRANCH, {
+      variables: { owner: username, name: repo },
+    }
   );
 
   const { data: branchesData, loading: branchesLoading } = useQuery<{ listBranches: ListBranchesResponse }>(
-    LIST_BRANCHES, { variables: { owner: username, name: repo } }
+    LIST_BRANCHES, {
+      variables: { owner: username, name: repo },
+    }
   );
 
   const hasNoBranches = !branchesLoading && (branchesData?.listBranches.branches.length ?? 1) === 0;
@@ -188,7 +192,9 @@ function RepoContent() {
   );
 
   const { data: statsData } = useQuery<{ getRepositoryStats: RepoStats }>(
-    GET_REPO_STATS, { variables: { owner: username, name: repo } }
+    GET_REPO_STATS, {
+      variables: { owner: username, name: repo },
+    }
   );
 
   const { data: starData, refetch: refetchStar } = useQuery<{ checkStar: CheckStarResponse }>(
@@ -334,7 +340,7 @@ function RepoContent() {
                 )}
 
                 {/* README */}
-                {readmeData && !readmeData.getFileBlob.isBinary && (
+                {readmeData?.getFileBlob && !readmeData.getFileBlob.isBinary && (
                   <div className="border border-border rounded-md overflow-hidden">
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-canvas-subtle border-b border-border">
                       <Eye size={14} className="text-fg-muted" />

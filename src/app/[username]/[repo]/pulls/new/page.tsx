@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useLazyQuery, useMutation } from '@apollo/client';
-import { ArrowRight, GitCommit } from 'lucide-react';
-import { GET_REPOSITORY, LIST_BRANCHES, COMPARE_BRANCHES } from '@/graphql/queries';
+import { ArrowLeft, GitCommit } from 'lucide-react';
+import { GET_REPOSITORY, LIST_BRANCHES, COMPARE_BRANCHES, GET_DEFAULT_BRANCH } from '@/graphql/queries';
 import { CREATE_PULL_REQUEST } from '@/graphql/mutations';
-import { Repository, ListBranchesResponse, CompareResponse } from '@/types';
+import { Repository, ListBranchesResponse, CompareResponse, DefaultBranchResponse } from '@/types';
 import RepoLayout from '@/components/layout/RepoLayout';
 import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
@@ -23,16 +23,26 @@ export default function NewPRPage() {
   }, [authLoading, user, router]);
 
   const [headBranch, setHeadBranch] = useState('');
-  const [baseBranch, setBaseBranch] = useState('main');
+  const [baseBranch, setBaseBranch] = useState('');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: repo },
+    context: { triggerNotFoundOn404: true },
   });
   const { data: branchesData } = useQuery<{ listBranches: ListBranchesResponse }>(LIST_BRANCHES, {
     variables: { owner: username, name: repo },
   });
+  const { data: defaultBranchData } = useQuery<{ getDefaultBranch: DefaultBranchResponse }>(GET_DEFAULT_BRANCH, {
+    variables: { owner: username, name: repo },
+  });
+
+  // Initialise baseBranch once the default branch is known
+  useEffect(() => {
+    const def = defaultBranchData?.getDefaultBranch?.branchName;
+    if (def && !baseBranch) setBaseBranch(def);
+  }, [defaultBranchData, baseBranch]);
   const [compare, { data: compareData, loading: comparing }] = useLazyQuery<{
     compareBranches: CompareResponse;
   }>(COMPARE_BRANCHES);
@@ -94,7 +104,7 @@ export default function NewPRPage() {
                 ))}
               </select>
             </div>
-            <ArrowRight size={16} className="text-fg-muted mt-5 shrink-0" />
+            <ArrowLeft size={16} className="text-fg-muted mt-5 shrink-0" />
             <div className="flex-1">
               <label className="text-xs text-fg-muted mb-1 block">Head branch</label>
               <select

@@ -11,17 +11,19 @@ import {
 import {
   GET_PULL_REQUEST, GET_PR_DIFF, LIST_PR_COMMENTS, LIST_PR_REVIEWS,
   GET_REPOSITORY, LIST_BRANCHES, LIST_LABELS, LIST_COLLABORATORS,
+  LIST_REVIEW_REQUESTS,
 } from '@/graphql/queries';
 import {
   MERGE_PULL_REQUEST, CLOSE_PULL_REQUEST, REOPEN_PULL_REQUEST,
   CREATE_PR_COMMENT, CREATE_PR_REVIEW, UPDATE_PR_COMMENT, DELETE_PR_COMMENT,
   UPDATE_PULL_REQUEST, ADD_PR_LABEL, REMOVE_PR_LABEL,
+  REQUEST_REVIEW, REMOVE_REVIEW_REQUEST,
 } from '@/graphql/mutations';
 import {
   PullRequest, PRComment, PRReview, Label,
   ListPRCommentsResponse, ListPRReviewsResponse, Repository,
   CompareResponse, ListBranchesResponse, ListLabelsResponse, Commit,
-  ListCollaboratorsResponse,
+  ListCollaboratorsResponse, ReviewRequest, User,
 } from '@/types';
 import { clsx } from 'clsx';
 import RepoLayout from '@/components/layout/RepoLayout';
@@ -137,7 +139,6 @@ export default function PullRequestPage() {
 
   // Reviewer picker
   const [reviewerPickerOpen, setReviewerPickerOpen] = useState(false);
-  const [requestedReviewers, setRequestedReviewers] = useState<string[]>([]);
   const reviewerPickerRef = useRef<HTMLDivElement>(null);
 
   // Labels dropdown
@@ -164,14 +165,17 @@ export default function PullRequestPage() {
   // â”€â”€ Queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: repo },
+    context: { triggerNotFoundOn404: true },
   });
   const { data: prData, loading, refetch: refetchPR } = useQuery<{ getPullRequest: PullRequest }>(
     GET_PULL_REQUEST,
-    { variables: { owner: username, repo, number: prNumber } }
+    { variables: { owner: username, repo, number: prNumber }, context: { triggerNotFoundOn404: true } }
   );
   const { data: diffData, loading: loadingDiff } = useQuery<{ getPullRequestDiff: CompareResponse }>(
     GET_PR_DIFF,
-    { variables: { owner: username, repo, number: prNumber } }
+    {
+      variables: { owner: username, repo, number: prNumber },
+    }
   );
   const { data: branchesData } = useQuery<{ listBranches: ListBranchesResponse }>(
     LIST_BRANCHES,
@@ -189,6 +193,9 @@ export default function PullRequestPage() {
   );
   const { data: collabData } = useQuery<{ listCollaborators: ListCollaboratorsResponse }>(
     LIST_COLLABORATORS, { variables: { owner: username, name: repo }, skip: !username || !repo }
+  );
+  const { data: reviewRequestsData, refetch: refetchReviewRequests } = useQuery<{ listReviewRequests: { requests: ReviewRequest[] } }>(
+    LIST_REVIEW_REQUESTS, { variables: { owner: username, repo, number: prNumber } }
   );
 
   // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -208,14 +215,19 @@ export default function PullRequestPage() {
   });
   const [addLabel] = useMutation(ADD_PR_LABEL, { onCompleted: () => refetchPR() });
   const [removeLabel] = useMutation(REMOVE_PR_LABEL, { onCompleted: () => refetchPR() });
+  const [requestReview] = useMutation(REQUEST_REVIEW, { onCompleted: () => refetchReviewRequests() });
+  const [removeReviewRequest] = useMutation(REMOVE_REVIEW_REQUEST, { onCompleted: () => refetchReviewRequests() });
 
   // â”€â”€ Derived data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const pr = prData?.getPullRequest;
   const allComments: PRComment[] = commentsData?.listPRComments.comments ?? [];
   const reviews: PRReview[] = reviewsData?.listPRReviews.reviews ?? [];
   const allLabels: Label[] = allLabelsData?.listLabels.labels ?? [];
+  const collaborators = collabData?.listCollaborators?.collaborators ?? [];
   const isRepoOwner = user?.username === username;
-  const canEdit = isRepoOwner || user?.username === pr?.author.username;
+  const isCollaborator = collaborators.some((c) => c.username === user?.username);
+  const canWrite = isRepoOwner || isCollaborator;
+  const canEdit = canWrite || user?.username === pr?.author.username;
 
   // Separate inline vs general comments
   const generalComments = allComments.filter((c) => !c.path);
@@ -389,7 +401,7 @@ export default function PullRequestPage() {
                 ) : (
                   <span className="inline-flex items-center gap-0.5 align-middle">
                     <code className="bg-canvas-subtle border border-border/60 px-1.5 py-0.5 rounded text-xs text-accent-fg">{gitSlug(pr.baseBranch)}</code>
-                    {isRepoOwner && pr.state === 'open' && !pr.merged && (
+                    {canWrite && pr.state === 'open' && !pr.merged && (
                       <button onClick={() => { setNewBase(pr.baseBranch); setEditingBase(true); }} className="text-fg-muted hover:text-fg ml-0.5" title="Change base branch">
                         <Pencil size={11} />
                       </button>
@@ -560,7 +572,7 @@ export default function PullRequestPage() {
                 })}
 
                 {/* Merge box */}
-                {isRepoOwner && pr.state === 'open' && !pr.merged && (
+                {canWrite && pr.state === 'open' && !pr.merged && (
                   <div className="border border-border rounded-md">
                     {/* Mergeable status */}
                     <div className="flex items-start gap-3 p-4">
@@ -761,7 +773,7 @@ export default function PullRequestPage() {
                 <div className="border-b border-border py-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-fg uppercase tracking-wide">Reviewers</span>
-                    {user && pr.state === 'open' && (
+                    {canWrite && pr.state === 'open' && (
                       <div className="relative" ref={reviewerPickerRef}>
                         <button
                           onClick={() => setReviewerPickerOpen((o) => !o)}
@@ -780,19 +792,20 @@ export default function PullRequestPage() {
                                 <p className="px-3 py-2 text-xs text-fg-muted">No collaborators found</p>
                               ) : (
                                 (collabData?.listCollaborators?.collaborators ?? [])
-                                  .filter((c) => c.username !== user.username)
+                                  .filter((c) => c.username !== user?.username)
                                   .map((c) => {
-                                    const alreadyRequested = requestedReviewers.includes(c.username);
+                                    const reviewRequests = reviewRequestsData?.listReviewRequests?.requests ?? [];
+                                    const alreadyRequested = reviewRequests.some((req) => req.reviewer.username === c.username);
                                     const alreadyReviewed = uniqueReviewers.some((r) => r.reviewer.username === c.username);
                                     return (
                                       <button
                                         key={c.username}
                                         className="flex items-center gap-2 w-full px-3 py-2 hover:bg-canvas-subtle text-left transition-colors"
-                                        onClick={() => {
+                                        onClick={async () => {
                                           if (!alreadyRequested && !alreadyReviewed) {
-                                            setRequestedReviewers((prev) => [...prev, c.username]);
+                                            await requestReview({ variables: { owner: username, repo, number: prNumber, username: c.username } });
                                           } else if (alreadyRequested) {
-                                            setRequestedReviewers((prev) => prev.filter((u) => u !== c.username));
+                                            await removeReviewRequest({ variables: { owner: username, repo, number: prNumber, username: c.username } });
                                           }
                                           setReviewerPickerOpen(false);
                                         }}
@@ -812,16 +825,16 @@ export default function PullRequestPage() {
                       </div>
                     )}
                   </div>
-                  {uniqueReviewers.length === 0 && requestedReviewers.length === 0 ? (
+                  {uniqueReviewers.length === 0 && (reviewRequestsData?.listReviewRequests?.requests?.length ?? 0) === 0 ? (
                     <p className="text-xs text-fg-muted">No reviewers assigned</p>
                   ) : (
                     <div className="space-y-2">
-                      {requestedReviewers
-                        .filter((name) => !uniqueReviewers.some((r) => r.reviewer.username === name))
-                        .map((name) => (
-                          <div key={name} className="flex items-center gap-2">
-                            <Avatar name={name} size={18} />
-                            <span className="flex-1 text-xs text-fg truncate">{name}</span>
+                      {(reviewRequestsData?.listReviewRequests?.requests ?? [])
+                        .filter((req) => !uniqueReviewers.some((r) => r.reviewer.username === req.reviewer.username))
+                        .map((req) => (
+                          <div key={req.reviewer.username} className="flex items-center gap-2">
+                            <Avatar src={req.reviewer.avatarUrl} name={req.reviewer.username} size={18} />
+                            <span className="flex-1 text-xs text-fg truncate">{req.reviewer.username}</span>
                             <Clock size={13} className="text-fg-muted flex-shrink-0" title="Review requested" />
                           </div>
                         ))}
@@ -861,7 +874,7 @@ export default function PullRequestPage() {
                 <div className="py-4" ref={labelsRef}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold text-fg uppercase tracking-wide">Labels</span>
-                    {isRepoOwner && (
+                    {canWrite && (
                       <button
                         onClick={() => setLabelsOpen((o) => !o)}
                         className="p-0.5 text-fg-muted hover:text-fg rounded"

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useLazyQuery } from '@apollo/client';
 import { Search } from 'lucide-react';
-import { LIST_COMMITS, GET_REPOSITORY, LIST_BRANCHES, SEARCH_COMMITS } from '@/graphql/queries';
-import { ListCommitsResponse, Repository, ListBranchesResponse } from '@/types';
+import { LIST_COMMITS, GET_REPOSITORY, LIST_BRANCHES, SEARCH_COMMITS, GET_DEFAULT_BRANCH } from '@/graphql/queries';
+import { ListCommitsResponse, Repository, ListBranchesResponse, DefaultBranchResponse } from '@/types';
 import RepoLayout from '@/components/layout/RepoLayout';
 import CommitItem from '@/components/repo/CommitItem';
 import BranchSelector from '@/components/repo/BranchSelector';
@@ -25,20 +25,29 @@ export default function CommitsPage() {
 function CommitsContent() {
   const { username, repo } = useParams<{ username: string; repo: string }>();
   const searchParams = useSearchParams();
-  const ref = searchParams.get('ref') ?? 'main';
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [submitted, setSubmitted] = useState('');
 
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: repo },
+    context: { triggerNotFoundOn404: true },
+  });
+  const { data: branchData } = useQuery<{ getDefaultBranch: DefaultBranchResponse }>(GET_DEFAULT_BRANCH, {
+    variables: { owner: username, name: repo },
   });
   const { data: branchesData } = useQuery<{ listBranches: ListBranchesResponse }>(LIST_BRANCHES, {
     variables: { owner: username, name: repo },
   });
+
+  const urlRef = searchParams.get('ref');
+  const defaultBranch = branchData?.getDefaultBranch?.branchName
+    ?? branchesData?.listBranches.branches[0]?.name;
+  const ref = urlRef ?? defaultBranch ?? 'master';
   const { data, loading } = useQuery<{ listCommits: ListCommitsResponse }>(LIST_COMMITS, {
     variables: { owner: username, name: repo, ref, page, limit: 30 },
-    skip: !!submitted,
+    skip: !!submitted || !defaultBranch,
   });
   const [searchCommits, { data: searchData, loading: searchLoading }] = useLazyQuery<
     { searchCommits: ListCommitsResponse }
@@ -68,6 +77,7 @@ function CommitsContent() {
                 currentBranch={ref}
                 owner={username}
                 repo={repo}
+                onSelect={(branch) => router.push(`/${username}/${repo}/commits?ref=${branch}`)}
               />
             )}
             <span className="text-sm text-fg-muted">Commit history</span>

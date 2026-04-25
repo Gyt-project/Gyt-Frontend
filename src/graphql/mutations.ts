@@ -391,6 +391,18 @@ export const CREATE_PR_REVIEW = gql`
   }
 `;
 
+export const REQUEST_REVIEW = gql`
+  mutation RequestReview($owner: String!, $repo: String!, $number: Int!, $username: String!) {
+    requestReview(owner: $owner, repo: $repo, number: $number, username: $username)
+  }
+`;
+
+export const REMOVE_REVIEW_REQUEST = gql`
+  mutation RemoveReviewRequest($owner: String!, $repo: String!, $number: Int!, $username: String!) {
+    removeReviewRequest(owner: $owner, repo: $repo, number: $number, username: $username)
+  }
+`;
+
 // ─── Webhooks ─────────────────────────────────────────────────────────────────
 
 export const CREATE_WEBHOOK = gql`

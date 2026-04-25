@@ -395,6 +395,19 @@ export const LIST_PR_REVIEWS = gql`
   }
 `;
 
+export const LIST_REVIEW_REQUESTS = gql`
+  query ListReviewRequests($owner: String!, $repo: String!, $number: Int!) {
+    listReviewRequests(owner: $owner, repo: $repo, number: $number) {
+      requests {
+        id
+        reviewer { ${USER_FIELDS} }
+        requestedBy { ${USER_FIELDS} }
+        createdAt
+      }
+    }
+  }
+`;
+
 // ─── Webhooks ─────────────────────────────────────────────────────────────────
 
 export const LIST_WEBHOOKS = gql`

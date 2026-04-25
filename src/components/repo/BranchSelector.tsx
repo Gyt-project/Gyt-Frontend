@@ -14,6 +14,7 @@ interface BranchSelectorProps {
   owner: string;
   repo: string;
   currentPath?: string;
+  onSelect?: (branchName: string) => void;
 }
 
 export default function BranchSelector({
@@ -22,6 +23,7 @@ export default function BranchSelector({
   owner,
   repo,
   currentPath,
+  onSelect,
 }: BranchSelectorProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -39,6 +41,10 @@ export default function BranchSelector({
 
   const select = (branchName: string) => {
     setOpen(false);
+    if (onSelect) {
+      onSelect(branchName);
+      return;
+    }
     const path = currentPath ? `&path=${encodeURIComponent(currentPath)}` : '';
     router.push(`/${owner}/${repo}?ref=${branchName}${path}`);
   };

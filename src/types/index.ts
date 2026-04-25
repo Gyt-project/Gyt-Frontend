@@ -329,6 +329,13 @@ export interface PRReview {
   submittedAt: Time;
 }
 
+export interface ReviewRequest {
+  id: string;
+  reviewer: User;
+  requestedBy: User;
+  createdAt: Time;
+}
+
 export interface ListPRsResponse {
   pullRequests: PullRequest[];
   total: number;

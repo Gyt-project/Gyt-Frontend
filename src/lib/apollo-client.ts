@@ -75,9 +75,18 @@ function createClient(): ApolloClient<NormalizedCacheObject> {
         e.message?.toLowerCase().includes('notfound')
     );
 
-    const { skipNotFoundRedirect } = operation.getContext();
-    if (isNotFound && !skipNotFoundRedirect && typeof window !== 'undefined') {
-      window.location.href = '/404';
+    const isForbidden = graphQLErrors?.some(
+      (e) =>
+        e.extensions?.code === 'FORBIDDEN' ||
+        e.message?.toLowerCase().includes('permission denied') ||
+        e.message?.toLowerCase().includes('access denied')
+    );
+
+    // Only trigger global 404 page for queries that explicitly opt-in.
+    // FORBIDDEN is treated as 404 to avoid leaking information about private repos.
+    const { triggerNotFoundOn404 } = operation.getContext();
+    if ((isNotFound || isForbidden) && triggerNotFoundOn404 && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('gyt:notfound'));
       return;
     }
 

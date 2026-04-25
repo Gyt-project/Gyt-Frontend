@@ -38,6 +38,7 @@ function UserProfileContent() {
 
   const { data: userData, loading: userLoading } = useQuery<{ getUser: User }>(GET_USER, {
     variables: { username },
+    context: { triggerNotFoundOn404: true },
   });
 
   const { data: reposData, loading: reposLoading } = useQuery<
@@ -62,7 +63,6 @@ function UserProfileContent() {
   const { data: profileRepoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: username },
     errorPolicy: 'ignore',
-    context: { skipNotFoundRedirect: true },
   });
   const profileRepo = profileRepoData?.getRepository;
 
@@ -72,7 +72,6 @@ function UserProfileContent() {
       variables: { owner: username, name: username },
       skip: !profileRepo,
       errorPolicy: 'ignore',
-      context: { skipNotFoundRedirect: true },
     }
   );
   const profileBranch = profileBranchData?.getDefaultBranch?.branchName;
@@ -81,7 +80,6 @@ function UserProfileContent() {
     variables: { owner: username, name: username, path: 'README.md', ref: profileBranch },
     skip: !profileBranch,
     errorPolicy: 'ignore',
-    context: { skipNotFoundRedirect: true },
   });
   const profileReadme = profileReadmeData?.getFileBlob;
 
