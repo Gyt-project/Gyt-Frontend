@@ -281,13 +281,14 @@ export default function IssuePage() {
                   {issue.labels.map((l) => {
                     const bg = `#${l.color}`;
                     return (
-                      <span
+                      <Link
                         key={l.id}
-                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold"
+                        href={`/${username}/${repo}/issues?label=${encodeURIComponent(l.name)}`}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold hover:opacity-75 transition-opacity"
                         style={{ backgroundColor: bg, color: contrastColor(l.color) }}
                       >
                         {l.name}
-                      </span>
+                      </Link>
                     );
                   })}
                 </div>

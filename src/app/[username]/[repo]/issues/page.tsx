@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@apollo/client';
-import { CircleDot, CheckCircle2, Plus, Search } from 'lucide-react';
+import { CircleDot, CheckCircle2, Plus, Search, X, Tag } from 'lucide-react';
 import { LIST_ISSUES, GET_REPOSITORY } from '@/graphql/queries';
 import { Repository, ListIssuesResponse } from '@/types';
 import RepoLayout from '@/components/layout/RepoLayout';
@@ -16,11 +16,14 @@ import { useAuth } from '@/context/AuthContext';
 export default function IssuesPage() {
   const { username, repo } = useParams<{ username: string; repo: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [state, setState] = useState<'open' | 'closed'>('open');
   const [authorFilter, setAuthorFilter] = useState('');
   const [page, setPage] = useState(1);
   const limit = 25;
+
+  const labelFilter = searchParams.get('label') ?? '';
 
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: repo },
@@ -30,6 +33,7 @@ export default function IssuesPage() {
     variables: {
       owner: username, repo, state, page, perPage: limit,
       author: authorFilter || undefined,
+      label: labelFilter || undefined,
     },
   });
 
@@ -54,6 +58,7 @@ export default function IssuesPage() {
     <RepoLayout owner={username} repo={repo} repository={repoData?.getRepository}>
       <div className="space-y-3">
         {/* Filter bar */}
+        <div className="space-y-2">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted pointer-events-none" />
@@ -75,6 +80,25 @@ export default function IssuesPage() {
               New issue
             </Button>
           )}
+        </div>
+        {labelFilter && (
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-xs text-fg-muted">
+              <Tag size={12} />
+              Filtered by label:
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent-subtle text-accent-fg border border-accent-muted">
+              {labelFilter}
+              <button
+                onClick={() => router.push(`/${username}/${repo}/issues`)}
+                className="hover:text-danger-fg transition-colors"
+                aria-label="Clear label filter"
+              >
+                <X size={11} />
+              </button>
+            </span>
+          </div>
+        )}
         </div>
 
         {/* List container */}

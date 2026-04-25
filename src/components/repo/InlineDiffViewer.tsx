@@ -272,6 +272,15 @@ export default function InlineDiffViewer({
               return line == null || !diffLineNos.has(line);
             })
           : fileInlineComments;
+        // Split fallback: line=null/0 are intentional file-level comments; others are truly out-of-range
+        const fileLevelFallback = fallbackComments.filter((c) => {
+          const line = asLineNumber(c.line);
+          return line == null || line === 0;
+        });
+        const outOfRangeFallback = fallbackComments.filter((c) => {
+          const line = asLineNumber(c.line);
+          return line != null && line !== 0;
+        });
 
         return (
           <div key={file.path} className="border border-border rounded-md overflow-hidden bg-canvas">
@@ -455,25 +464,44 @@ export default function InlineDiffViewer({
               </div>
             )}
 
+            {/* File-level comments (no specific line) */}
+            {fileLevelFallback.length > 0 && (!canExpand || isExp) && (
+              <div className="border-t border-border">
+                <div className="px-3 py-1.5 bg-canvas-subtle text-xs text-fg-muted border-b border-border/50 flex items-center gap-1">
+                  <MessageSquare size={11} />
+                  {`${fileLevelFallback.length} comment${fileLevelFallback.length !== 1 ? 's' : ''} on this file`}
+                </div>
+                <div className="divide-y divide-border/30">
+                  {fileLevelFallback.map(c => (
+                    <InlineCommentBlock
+                      key={c.id}
+                      comment={c}
+                      currentUser={currentUser}
+                      onUpdate={onUpdateComment}
+                      onDelete={onDeleteComment}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Comments for this file that couldn't be matched to a visible diff line */}
-            {fallbackComments.length > 0 && (!canExpand || isExp) && (
+            {outOfRangeFallback.length > 0 && (!canExpand || isExp) && (
               <div className="border-t border-border">
                 <div className="px-3 py-1.5 bg-canvas-subtle text-xs text-fg-muted border-b border-border/50 flex items-center gap-1">
                   <MessageSquare size={11} />
                   {canExpand
-                    ? `${fallbackComments.length} comment${fallbackComments.length !== 1 ? 's' : ''} on lines not visible in this diff`
-                    : `${fallbackComments.length} comment${fallbackComments.length !== 1 ? 's' : ''} on this file`}
+                    ? `${outOfRangeFallback.length} comment${outOfRangeFallback.length !== 1 ? 's' : ''} on lines not visible in this diff`
+                    : `${outOfRangeFallback.length} comment${outOfRangeFallback.length !== 1 ? 's' : ''} on this file`}
                 </div>
                 <div className="divide-y divide-border/30">
-                  {[...fallbackComments]
+                  {[...outOfRangeFallback]
                     .sort((a, b) => (a.line ?? 0) - (b.line ?? 0))
                     .map(c => (
                       <div key={c.id}>
-                        {c.line != null && (
-                          <div className="px-4 py-1 bg-canvas-overlay/50 text-[11px] text-fg-muted font-mono border-b border-border/30">
-                            Line {c.line}
-                          </div>
-                        )}
+                        <div className="px-4 py-1 bg-canvas-overlay/50 text-[11px] text-fg-muted font-mono border-b border-border/30">
+                          Line {c.line}
+                        </div>
                         <InlineCommentBlock
                           comment={c}
                           currentUser={currentUser}

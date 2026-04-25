@@ -9,15 +9,17 @@ interface PRListItemProps {
   repo: string;
 }
 
-function LabelPill({ label }: { label: Label }) {
+function LabelPill({ label, owner, repo }: { label: Label; owner: string; repo: string }) {
   const bg = `#${label.color}`;
   return (
-    <span
-      className="px-2 py-0.5 rounded-full text-xs font-medium leading-tight"
+    <Link
+      href={`/${owner}/${repo}/pulls?label=${encodeURIComponent(label.name)}`}
+      onClick={(e) => e.stopPropagation()}
+      className="px-2 py-0.5 rounded-full text-xs font-medium leading-tight hover:opacity-75 transition-opacity"
       style={{ backgroundColor: bg + '22', color: bg, border: `1px solid ${bg}44` }}
     >
       {label.name}
-    </span>
+    </Link>
   );
 }
 
@@ -59,7 +61,7 @@ export default function PRListItem({ pr, owner, repo }: PRListItemProps) {
           </Link>
           {pr.labels.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {pr.labels.map((l) => <LabelPill key={l.id} label={l} />)}
+              {pr.labels.map((l) => <LabelPill key={l.id} label={l} owner={owner} repo={repo} />)}
             </div>
           )}
         </div>

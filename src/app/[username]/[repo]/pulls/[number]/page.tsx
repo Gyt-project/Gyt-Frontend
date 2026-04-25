@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
@@ -6,7 +6,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import {
   GitMerge, XCircle, CircleDot, GitCommit, CheckCircle2, AlertCircle,
   Pencil, Check, X, ChevronDown, Settings, Eye, MessageSquare, GitPullRequest,
-  FileText, Trash2, Clock,
+  FileText, Trash2, Clock, Radio,
 } from 'lucide-react';
 import {
   GET_PULL_REQUEST, GET_PR_DIFF, LIST_PR_COMMENTS, LIST_PR_REVIEWS,
@@ -62,7 +62,7 @@ function StatusBadge({ state, merged }: { state: string; merged: boolean }) {
 
 // â”€â”€â”€ Sidebar label badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function LabelBadge({ label }: { label: Label }) {
+function LabelBadge({ label, owner, repo }: { label: Label; owner: string; repo: string }) {
   const hex = label.color.replace('#', '');
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
@@ -70,12 +70,13 @@ function LabelBadge({ label }: { label: Label }) {
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   const textColor = lum > 0.5 ? '#0d1117' : '#ffffff';
   return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+    <Link
+      href={`/${owner}/${repo}/pulls?label=${encodeURIComponent(label.name)}`}
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium hover:opacity-75 transition-opacity"
       style={{ backgroundColor: `#${hex}`, color: textColor }}
     >
       {label.name}
-    </span>
+    </Link>
   );
 }
 
@@ -378,6 +379,13 @@ export default function PullRequestPage() {
                 >
                   <Pencil size={13} className="mr-1" /> Edit
                 </Button>
+              )}
+              {pr.state === 'open' && !pr.merged && (
+                <Link href={`/${username}/${repo}/pulls/${number}/live`}>
+                  <Button size="sm" variant="outline" className="flex-shrink-0 mt-0.5">
+                    <Radio size={13} className="mr-1" /> Live Review
+                  </Button>
+                </Link>
               )}
             </div>
 
@@ -869,16 +877,16 @@ export default function PullRequestPage() {
                           <div key={req.reviewer.username} className="flex items-center gap-2">
                             <Avatar src={req.reviewer.avatarUrl} name={req.reviewer.username} size={18} />
                             <span className="flex-1 text-xs text-fg truncate">{req.reviewer.username}</span>
-                            <Clock size={13} className="text-fg-muted flex-shrink-0" title="Review requested" />
+                            <span title="Review requested"><Clock size={13} className="text-fg-muted flex-shrink-0" /></span>
                           </div>
                         ))}
                       {uniqueReviewers.map((r) => (
                         <div key={r.reviewer.username} className="flex items-center gap-2">
                           <Avatar src={r.reviewer.avatarUrl} name={r.reviewer.username} size={18} />
                           <span className="flex-1 text-xs text-fg truncate">{r.reviewer.username}</span>
-                          {r.state === 'APPROVED' && <CheckCircle2 size={13} className="text-success-fg flex-shrink-0" title="Approved" />}
-                          {r.state === 'CHANGES_REQUESTED' && <XCircle size={13} className="text-danger-fg flex-shrink-0" title="Changes requested" />}
-                          {r.state === 'COMMENTED' && <Eye size={13} className="text-fg-muted flex-shrink-0" title="Commented" />}
+                          {r.state === 'APPROVED' && <span title="Approved"><CheckCircle2 size={13} className="text-success-fg flex-shrink-0" /></span>}
+                          {r.state === 'CHANGES_REQUESTED' && <span title="Changes requested"><XCircle size={13} className="text-danger-fg flex-shrink-0" /></span>}
+                          {r.state === 'COMMENTED' && <span title="Commented"><Eye size={13} className="text-fg-muted flex-shrink-0" /></span>}
                         </div>
                       ))}
                     </div>
@@ -922,7 +930,7 @@ export default function PullRequestPage() {
                     <p className="text-xs text-fg-muted">None yet</p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
-                      {pr.labels.map((l) => <LabelBadge key={l.id} label={l} />)}
+                      {pr.labels.map((l) => <LabelBadge key={l.id} label={l} owner={username} repo={repo} />)}
                     </div>
                   )}
                   {labelsOpen && (
