@@ -376,7 +376,7 @@ export const LIST_PR_COMMENTS = gql`
   query ListPRComments($owner: String!, $repo: String!, $number: Int!) {
     listPRComments(owner: $owner, repo: $repo, number: $number) {
       comments {
-        id body path line
+        id body path line commitSha
         author { ${USER_FIELDS} }
         createdAt updatedAt
       }
@@ -424,6 +424,14 @@ export const GET_BRANCH_PROTECTION = gql`
   query GetBranchProtection($owner: String!, $repo: String!, $id: String!) {
     getBranchProtection(owner: $owner, repo: $repo, id: $id) {
       id pattern requirePullRequest requiredApprovals dismissStaleReviews blockForcePush createdAt updatedAt
+    }
+  }
+`;
+
+export const GET_PR_MERGE_ELIGIBILITY = gql`
+  query GetPRMergeEligibility($owner: String!, $repo: String!, $number: Int!) {
+    getPRMergeEligibility(owner: $owner, repo: $repo, number: $number) {
+      canMerge reason requiredApprovals currentApprovals blockedByChangesRequest
     }
   }
 `;

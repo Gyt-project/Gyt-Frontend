@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileDiff as FileDiffType, PRComment, User } from '@/types';
 import { clsx } from 'clsx';
-import { FileText, Plus, RefreshCw, Trash2, ChevronDown, ChevronRight, Pencil, MessageSquare } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Trash2, ChevronDown, ChevronRight, Pencil, MessageSquare, Clock } from 'lucide-react';
 import Avatar from '@/components/ui/Avatar';
 import Textarea from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
@@ -15,7 +15,8 @@ export interface InlineDiffViewerProps {
   patch?: string;
   inlineComments?: PRComment[];
   currentUser?: User | null;
-  onAddComment?: (path: string, line: number | null, body: string) => Promise<void>;
+  headCommitSha?: string | null;
+  onAddComment?: (path: string, line: number | null, body: string, commitSha: string | null) => Promise<void>;
   onUpdateComment?: (id: string, body: string) => void;
   onDeleteComment?: (id: string) => void;
   showStats?: boolean;
@@ -150,12 +151,13 @@ function InlineCommentForm({
 // ─── Inline comment display ───────────────────────────────────────────────────
 
 function InlineCommentBlock({
-  comment, currentUser, onUpdate, onDelete,
+  comment, currentUser, onUpdate, onDelete, isOutdated,
 }: {
   comment: PRComment;
   currentUser?: User | null;
   onUpdate?: (id: string, body: string) => void;
   onDelete?: (id: string) => void;
+  isOutdated?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(comment.body);
@@ -163,13 +165,19 @@ function InlineCommentBlock({
   const isAuthor = currentUser?.username === comment.author.username;
 
   return (
-    <div className="mx-2 my-1.5 rounded-md border border-border bg-canvas shadow-sm overflow-hidden">
+    <div className={clsx('mx-2 my-1.5 rounded-md border bg-canvas shadow-sm overflow-hidden', isOutdated ? 'border-border/50 opacity-75' : 'border-border')}>
       <div className="flex gap-2.5 items-start p-3">
         <Avatar src={comment.author.avatarUrl} name={comment.author.username} size={22} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-xs font-semibold text-fg">{comment.author.username}</span>
             <span className="text-xs text-fg-muted">{formatRelativeTime(comment.createdAt)}</span>
+            {isOutdated && (
+              <span className="flex items-center gap-0.5 text-[10px] text-fg-muted bg-canvas-subtle border border-border/60 px-1.5 py-0.5 rounded-full">
+                <Clock size={9} />
+                Outdated
+              </span>
+            )}
             {isAuthor && (
               <div className="ml-auto flex gap-1">
                 <button onClick={() => setEditing((e) => !e)} className="p-0.5 text-fg-muted hover:text-fg rounded"><Pencil size={11} /></button>
@@ -201,6 +209,7 @@ export default function InlineDiffViewer({
   patch,
   inlineComments = [],
   currentUser,
+  headCommitSha,
   onAddComment,
   onUpdateComment,
   onDeleteComment,
@@ -339,7 +348,7 @@ export default function InlineDiffViewer({
                   currentUser={currentUser}
                   onSubmit={async (body) => {
                     if (onAddComment) {
-                      await onAddComment(file.path, null, body);
+                      await onAddComment(file.path, null, body, headCommitSha ?? null);
                       setCommentFormLine(null);
                     }
                   }}
@@ -434,6 +443,7 @@ export default function InlineDiffViewer({
                                   currentUser={currentUser}
                                   onUpdate={onUpdateComment}
                                   onDelete={onDeleteComment}
+                                  isOutdated={headCommitSha != null && c.commitSha != null && c.commitSha !== headCommitSha}
                                 />
                               </td>
                             </tr>
@@ -447,7 +457,7 @@ export default function InlineDiffViewer({
                                   currentUser={currentUser}
                                   onSubmit={async (body) => {
                                     if (onAddComment) {
-                                      await onAddComment(file.path, lineNo, body);
+                                      await onAddComment(file.path, lineNo, body, headCommitSha ?? null);
                                       setCommentFormLine(null);
                                     }
                                   }}
@@ -479,6 +489,7 @@ export default function InlineDiffViewer({
                       currentUser={currentUser}
                       onUpdate={onUpdateComment}
                       onDelete={onDeleteComment}
+                      isOutdated={headCommitSha != null && c.commitSha != null && c.commitSha !== headCommitSha}
                     />
                   ))}
                 </div>
@@ -507,6 +518,7 @@ export default function InlineDiffViewer({
                           currentUser={currentUser}
                           onUpdate={onUpdateComment}
                           onDelete={onDeleteComment}
+                          isOutdated={headCommitSha != null && c.commitSha != null && c.commitSha !== headCommitSha}
                         />
                       </div>
                     ))}

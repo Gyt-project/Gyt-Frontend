@@ -317,6 +317,7 @@ export interface PRComment {
   author: User;
   path?: string;
   line?: number;
+  commitSha?: string;
   createdAt: Time;
   updatedAt: Time;
 }
@@ -385,4 +386,14 @@ export interface BranchProtection {
 
 export interface ListBranchProtectionsResponse {
   rules: BranchProtection[];
+}
+
+// ─── PR Merge Eligibility ─────────────────────────────────────────────────────
+
+export interface PRMergeEligibility {
+  canMerge: boolean;
+  reason: string | null;
+  requiredApprovals: number;
+  currentApprovals: number;
+  blockedByChangesRequest: boolean;
 }

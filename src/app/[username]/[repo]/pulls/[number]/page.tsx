@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client';
 import {
@@ -11,7 +11,7 @@ import {
 import {
   GET_PULL_REQUEST, GET_PR_DIFF, LIST_PR_COMMENTS, LIST_PR_REVIEWS,
   GET_REPOSITORY, LIST_BRANCHES, LIST_LABELS, LIST_COLLABORATORS,
-  LIST_REVIEW_REQUESTS,
+  LIST_REVIEW_REQUESTS, GET_PR_MERGE_ELIGIBILITY,
 } from '@/graphql/queries';
 import {
   MERGE_PULL_REQUEST, CLOSE_PULL_REQUEST, REOPEN_PULL_REQUEST,
@@ -23,7 +23,7 @@ import {
   PullRequest, PRComment, PRReview, Label,
   ListPRCommentsResponse, ListPRReviewsResponse, Repository,
   CompareResponse, ListBranchesResponse, ListLabelsResponse, Commit,
-  ListCollaboratorsResponse, ReviewRequest, User,
+  ListCollaboratorsResponse, ReviewRequest, User, PRMergeEligibility,
 } from '@/types';
 import { clsx } from 'clsx';
 import RepoLayout from '@/components/layout/RepoLayout';
@@ -38,6 +38,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { formatRelativeTime } from '@/lib/utils';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
+import { useSSE } from '@/lib/useSSE';
 
 
 // â”€â”€â”€ Status badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -172,7 +173,7 @@ export default function PullRequestPage() {
     GET_PULL_REQUEST,
     { variables: { owner: username, repo, number: prNumber }, context: { triggerNotFoundOn404: true } }
   );
-  const { data: diffData, loading: loadingDiff } = useQuery<{ getPullRequestDiff: CompareResponse }>(
+  const { data: diffData, loading: loadingDiff, refetch: refetchDiff } = useQuery<{ getPullRequestDiff: CompareResponse }>(
     GET_PR_DIFF,
     {
       variables: { owner: username, repo, number: prNumber },
@@ -198,6 +199,21 @@ export default function PullRequestPage() {
   const { data: reviewRequestsData, refetch: refetchReviewRequests } = useQuery<{ listReviewRequests: { requests: ReviewRequest[] } }>(
     LIST_REVIEW_REQUESTS, { variables: { owner: username, repo, number: prNumber } }
   );
+  const { data: mergeEligibilityData, refetch: refetchMergeEligibility } = useQuery<{ getPRMergeEligibility: PRMergeEligibility }>(
+    GET_PR_MERGE_ELIGIBILITY,
+    { variables: { owner: username, repo, number: prNumber }, skip: !username || !repo || !prNumber }
+  );
+
+  // ── SSE real-time updates ─────────────────────────────────────────────────
+  const ssePath = username && repo && prNumber ? `/ws/pr/${username}/${repo}/${prNumber}` : null;
+  const handleSSEEvent = useCallback((type: string) => {
+    if (type === 'comment_added') { refetchComments(); }
+    else if (type === 'review_submitted') { refetchReviews(); refetchMergeEligibility(); }
+    else if (type === 'review_request_changed') { refetchReviewRequests(); }
+    else if (type === 'pr_status_changed') { refetchPR(); refetchMergeEligibility(); }
+    else if (type === 'new_commits') { refetchDiff(); refetchReviews(); refetchMergeEligibility(); }
+  }, [refetchComments, refetchReviews, refetchMergeEligibility, refetchReviewRequests, refetchPR, refetchDiff]);
+  useSSE(ssePath, handleSSEEvent);
 
   // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [mergePR, { loading: merging }] = useMutation(MERGE_PULL_REQUEST, { onCompleted: () => refetchPR() });
@@ -230,6 +246,7 @@ export default function PullRequestPage() {
   const isCollaborator = collaborators.some((c) => c.username === user?.username);
   const canWrite = isRepoOwner || isCollaborator;
   const canEdit = canWrite || user?.username === pr?.author.username;
+  const mergeEligibility = mergeEligibilityData?.getPRMergeEligibility;
 
   // Separate inline vs general comments
   const generalComments = allComments.filter((c) => !c.path);
@@ -328,9 +345,8 @@ export default function PullRequestPage() {
     }
   };
 
-  const handleAddInlineComment = async (path: string, line: number | null, body: string) => {
-    await createComment({ variables: { input: { owner: username, repo, number: prNumber, body, path, line } } });
-    refetchComments();
+  const handleAddInlineComment = async (path: string, line: number | null, body: string, commitSha?: string | null) => {
+    await createComment({ variables: { input: { owner: username, repo, number: prNumber, body, path, line, commitSha } } });
   };
 
   const mergeMethodLabels = {
@@ -623,7 +639,7 @@ export default function PullRequestPage() {
                 {/* Merge box */}
                 {canWrite && pr.state === 'open' && !pr.merged && (
                   <div className="border border-border rounded-md">
-                    {/* Mergeable status */}
+                    {/* Mergeable status (git conflicts) */}
                     <div className="flex items-start gap-3 p-4">
                       {pr.mergeable ? (
                         <div className="w-7 h-7 rounded-full bg-success-emphasis flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -643,6 +659,24 @@ export default function PullRequestPage() {
                         </p>
                       </div>
                     </div>
+
+                    {/* Branch protection eligibility panel */}
+                    {mergeEligibility && !mergeEligibility.canMerge && (
+                      <div className="mx-4 mb-3 border border-danger-emphasis/40 rounded-md bg-danger-subtle px-4 py-3 flex items-start gap-3">
+                        <AlertCircle size={16} className="text-danger-fg flex-shrink-0 mt-0.5" />
+                        <div className="text-sm">
+                          <p className="font-semibold text-fg">Merge blocked by branch protection</p>
+                          {mergeEligibility.reason && (
+                            <p className="text-fg-muted mt-0.5">{mergeEligibility.reason}</p>
+                          )}
+                          {mergeEligibility.requiredApprovals > 0 && (
+                            <p className="text-fg-muted mt-1">
+                              {mergeEligibility.currentApprovals} / {mergeEligibility.requiredApprovals} required approval{mergeEligibility.requiredApprovals !== 1 ? 's' : ''}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Squash commit inputs */}
                     {mergeMethod === 'squash' && showSquashInputs && (
@@ -676,7 +710,7 @@ export default function PullRequestPage() {
                         variant="primary"
                         size="sm"
                         loading={merging}
-                        disabled={!pr.mergeable}
+                        disabled={!pr.mergeable || (mergeEligibility != null && !mergeEligibility.canMerge)}
                         onClick={handleMerge}
                         className="rounded-r-none pr-3"
                       >
@@ -685,7 +719,7 @@ export default function PullRequestPage() {
                       </Button>
                       <div className="relative" ref={mergeDropRef}>
                         <button
-                          disabled={!pr.mergeable}
+                          disabled={!pr.mergeable || (mergeEligibility != null && !mergeEligibility.canMerge)}
                           onClick={() => setMergeDropdownOpen((o) => !o)}
                           className="h-[33px] px-2.5 bg-accent hover:bg-accent/90 disabled:opacity-50 border-l border-white/20 rounded-r-md text-white transition-colors"
                         >
@@ -887,14 +921,16 @@ export default function PullRequestPage() {
                             <span title="Review requested"><Clock size={13} className="text-fg-muted flex-shrink-0" /></span>
                           </div>
                         ))}
-                      {uniqueReviewers.map((r) => (
+                      {uniqueReviewers.map((r) => {
+                        const rStale = isReviewStale(r);
+                        return (
                         <div key={r.reviewer.username} className="flex items-center gap-2">
                           <Avatar src={r.reviewer.avatarUrl} name={r.reviewer.username} size={18} />
                           <span className="flex-1 text-xs text-fg truncate">{r.reviewer.username}</span>
-                          {r.state === 'APPROVED' && <span title="Approved"><CheckCircle2 size={13} className="text-success-fg flex-shrink-0" /></span>}
-                          {r.state === 'CHANGES_REQUESTED' && <span title="Changes requested"><XCircle size={13} className="text-danger-fg flex-shrink-0" /></span>}
+                          {r.state === 'APPROVED' && !rStale && <span title="Approved"><CheckCircle2 size={13} className="text-[#3fb950] flex-shrink-0" /></span>}
+                          {r.state === 'CHANGES_REQUESTED' && !rStale && <span title="Changes requested"><XCircle size={13} className="text-danger-fg flex-shrink-0" /></span>}
                           {r.state === 'COMMENTED' && <span title="Commented"><Eye size={13} className="text-fg-muted flex-shrink-0" /></span>}
-                          {r.state === 'DISMISSED' && <span title="Dismissed"><Eye size={13} className="text-fg-muted flex-shrink-0" /></span>}
+                          {(r.state === 'DISMISSED' || rStale) && <span title="Stale review"><Clock size={13} className="text-fg-muted flex-shrink-0" /></span>}
                           {canWrite && pr.state === 'open' && !pr.merged && (
                             <button
                               title="Re-request review"
@@ -908,7 +944,8 @@ export default function PullRequestPage() {
                             </button>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1137,6 +1174,7 @@ export default function PullRequestPage() {
                   patch={diffPatch}
                   inlineComments={inlineComments}
                   currentUser={user}
+                  headCommitSha={commits[commits.length - 1]?.sha ?? undefined}
                   onAddComment={user ? handleAddInlineComment : undefined}
                   onUpdateComment={(id, body) => updateComment({ variables: { owner: username, repo, commentId: id, body } })}
                   onDeleteComment={(id) => deleteComment({ variables: { owner: username, repo, commentId: id } })}

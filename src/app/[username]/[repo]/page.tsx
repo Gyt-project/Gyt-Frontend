@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation } from '@apollo/client';
 import Link from 'next/link';
-import { Star, GitFork, Eye, Clock, Terminal, Copy, Check } from 'lucide-react';
+import { Star, GitFork, Eye, Clock, Terminal, Copy, Check, RotateCw, X } from 'lucide-react';
 import {
   GET_REPOSITORY, GET_REPO_TREE, GET_DEFAULT_BRANCH,
   GET_CLONE_URLS, GET_REPO_STATS, CHECK_STAR, LIST_BRANCHES,
@@ -22,6 +22,7 @@ import RepoSidebar from '@/components/repo/RepoSidebar';
 import CodeViewer from '@/components/repo/CodeViewer';
 import BranchSelector from '@/components/repo/BranchSelector';
 import CloneButton from '@/components/repo/CloneButton';
+import { useSSE } from '@/lib/useSSE';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
@@ -250,8 +251,34 @@ function RepoContent() {
     }
   };
 
+  // ── SSE: push events ──────────────────────────────────────────────────────
+  const [pushBanner, setPushBanner] = useState(false);
+  const handlePush = useCallback(() => { setPushBanner(true); }, []);
+  const ssePushPath = username && repo ? `/ws/repo/${username}/${repo}` : null;
+  useSSE(ssePushPath, (type) => { if (type === 'push') handlePush(); });
+
   return (
     <RepoLayout owner={username} repo={repo} repository={repository}>
+      {/* New commits banner */}
+      {pushBanner && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-accent-emphasis/40 bg-accent-subtle px-4 py-2.5 text-sm text-fg">
+          <span className="flex items-center gap-2">
+            <RotateCw size={14} className="text-accent-fg" />
+            New commits have been pushed to this repository.
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setPushBanner(false); window.location.reload(); }}
+              className="text-accent-fg hover:underline font-medium"
+            >
+              Refresh
+            </button>
+            <button onClick={() => setPushBanner(false)} className="text-fg-muted hover:text-fg">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
       {repoLoading || branchesLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : (

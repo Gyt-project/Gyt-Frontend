@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
         destination: `${GRAPHQL_BACKEND}/graphql`,
       },
       {
+        source: '/ws/:path*',
+        destination: `${GRAPHQL_BACKEND}/ws/:path*`,
+      },
+      {
         source: '/live/:path*',
         destination: `${LIVE_BACKEND}/live/:path*`,
       },

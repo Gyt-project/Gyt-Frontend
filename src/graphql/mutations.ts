@@ -361,7 +361,7 @@ export const REMOVE_PR_LABEL = gql`
 export const CREATE_PR_COMMENT = gql`
   mutation CreatePRComment($input: CreatePRCommentInput!) {
     createPRComment(input: $input) {
-      id body path line
+      id body path line commitSha
       author { uuid username displayName avatarUrl createdAt email bio isAdmin }
       createdAt updatedAt
     }
