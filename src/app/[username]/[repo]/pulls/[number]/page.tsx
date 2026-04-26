@@ -6,7 +6,7 @@ import { useQuery, useMutation } from '@apollo/client';
 import {
   GitMerge, XCircle, CircleDot, GitCommit, CheckCircle2, AlertCircle,
   Pencil, Check, X, ChevronDown, Settings, Eye, MessageSquare, GitPullRequest,
-  FileText, Trash2, Clock, Radio,
+  FileText, Trash2, Clock, Radio, RotateCw,
 } from 'lucide-react';
 import {
   GET_PULL_REQUEST, GET_PR_DIFF, LIST_PR_COMMENTS, LIST_PR_REVIEWS,
@@ -17,7 +17,7 @@ import {
   MERGE_PULL_REQUEST, CLOSE_PULL_REQUEST, REOPEN_PULL_REQUEST,
   CREATE_PR_COMMENT, CREATE_PR_REVIEW, UPDATE_PR_COMMENT, DELETE_PR_COMMENT,
   UPDATE_PULL_REQUEST, ADD_PR_LABEL, REMOVE_PR_LABEL,
-  REQUEST_REVIEW, REMOVE_REVIEW_REQUEST,
+  REQUEST_REVIEW, REMOVE_REVIEW_REQUEST, DISMISS_REVIEW,
 } from '@/graphql/mutations';
 import {
   PullRequest, PRComment, PRReview, Label,
@@ -216,8 +216,9 @@ export default function PullRequestPage() {
   });
   const [addLabel] = useMutation(ADD_PR_LABEL, { onCompleted: () => refetchPR() });
   const [removeLabel] = useMutation(REMOVE_PR_LABEL, { onCompleted: () => refetchPR() });
-  const [requestReview] = useMutation(REQUEST_REVIEW, { onCompleted: () => refetchReviewRequests() });
+  const [requestReview] = useMutation(REQUEST_REVIEW, { onCompleted: () => { refetchReviewRequests(); refetchReviews(); } });
   const [removeReviewRequest] = useMutation(REMOVE_REVIEW_REQUEST, { onCompleted: () => refetchReviewRequests() });
+  const [dismissReview] = useMutation(DISMISS_REVIEW, { onCompleted: () => refetchReviews() });
 
   // â”€â”€ Derived data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const pr = prData?.getPullRequest;
@@ -266,8 +267,13 @@ export default function PullRequestPage() {
     (reviewRequestsData?.listReviewRequests?.requests ?? []).some(
       (req) => req.reviewer.username === user?.username
     );
-  // Show the reviewer CTA only when the PR is open, the user is logged in, and is a reviewer.
+  // Show the reviewer CTA only when the PR is open, the user is logged in, and was explicitly requested to review.
   const showReviewCTA = !!user && !!pr && pr.state === 'open' && !pr.merged && isRequestedReviewer;
+
+  // Compute whether a review is stale (new commits pushed after the review was submitted).
+  function isReviewStale(review: PRReview): boolean {
+    return commits.some((c) => new Date(c.author.when).getTime() > new Date(review.submittedAt).getTime());
+  }
 
   const diffFiles = diffData?.getPullRequestDiff?.files ?? [];
   const diffPatch = diffData?.getPullRequestDiff?.patch;
@@ -490,7 +496,8 @@ export default function PullRequestPage() {
                 {/* Interleaved timeline: reviews, comments, inline code comments, commits */}
                 {timeline.map((item) => {
                   if (item.type === 'review') {
-                    return <ReviewItem key={`review-${item.data.id}`} review={item.data} />;
+                    const stale = isReviewStale(item.data);
+                    return <ReviewItem key={`review-${item.data.id}`} review={item.data} isStale={stale} />;
                   }
                   if (item.type === 'comment') {
                     const c = item.data;
@@ -606,7 +613,7 @@ export default function PullRequestPage() {
                       variant="success"
                       size="sm"
                       className="flex-shrink-0"
-                      onClick={() => { setActiveTab('files'); setReviewPanelOpen(true); }}
+                      onClick={() => { setActiveTab('files'); }}
                     >
                       <Eye size={13} className="mr-1" /> Add your review
                     </Button>
@@ -887,6 +894,19 @@ export default function PullRequestPage() {
                           {r.state === 'APPROVED' && <span title="Approved"><CheckCircle2 size={13} className="text-success-fg flex-shrink-0" /></span>}
                           {r.state === 'CHANGES_REQUESTED' && <span title="Changes requested"><XCircle size={13} className="text-danger-fg flex-shrink-0" /></span>}
                           {r.state === 'COMMENTED' && <span title="Commented"><Eye size={13} className="text-fg-muted flex-shrink-0" /></span>}
+                          {r.state === 'DISMISSED' && <span title="Dismissed"><Eye size={13} className="text-fg-muted flex-shrink-0" /></span>}
+                          {canWrite && pr.state === 'open' && !pr.merged && (
+                            <button
+                              title="Re-request review"
+                              className="p-0.5 text-fg-muted hover:text-fg rounded transition-colors"
+                              onClick={async () => {
+                                await removeReviewRequest({ variables: { owner: username, repo, number: prNumber, username: r.reviewer.username } });
+                                requestReview({ variables: { owner: username, repo, number: prNumber, username: r.reviewer.username } });
+                              }}
+                            >
+                              <RotateCw size={12} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

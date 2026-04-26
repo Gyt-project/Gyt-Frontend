@@ -96,10 +96,6 @@ function createClient(): ApolloClient<NormalizedCacheObject> {
         // Pure guest browsing public content — no session to restore
         return;
       }
-      if (!sessionStorage.getItem('refreshToken')) {
-        dispatchEvent('auth:logout');
-        return;
-      }
 
       if (isRefreshing) {
         // Queue this operation until the in-flight refresh resolves

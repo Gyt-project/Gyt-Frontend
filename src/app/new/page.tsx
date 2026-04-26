@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery } from '@apollo/client';
 import { BookMarked, Lock, Globe, ChevronDown } from 'lucide-react';
@@ -16,7 +16,7 @@ import { clsx } from 'clsx';
 
 export default function NewRepoPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [owner, setOwner] = useState('');         // '' means personal account
   const [form, setForm] = useState({
     name: '',
@@ -58,10 +58,11 @@ export default function NewRepoPage() {
     });
   };
 
-  if (!user) {
-    router.push('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!user && !isLoading) router.push('/login');
+  }, [user, isLoading, router]);
+
+  if (!user) return null;
 
   const ownerLabel = owner
     ? (orgs.find((o) => o.name === owner)?.displayName || owner)

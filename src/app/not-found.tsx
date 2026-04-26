@@ -1,9 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Home, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-canvas flex flex-col items-center justify-center px-4 text-center">
       {/* Giant 404 */}
@@ -19,14 +22,13 @@ export default function NotFound() {
 
       {/* Nav */}
       <div className="flex items-center gap-3">
-        <Link
-          href="javascript:history.back()"
-          onClick={(e) => { e.preventDefault(); history.back(); }}
+        <button
+          onClick={() => router.back()}
           className="flex items-center gap-1.5 px-4 py-2 rounded-md border border-border text-sm text-fg-muted hover:text-fg hover:border-fg-muted transition-colors"
         >
           <ArrowLeft size={14} />
           Go back
-        </Link>
+        </button>
         <Link
           href="/"
           className="flex items-center gap-1.5 px-4 py-2 rounded-md bg-accent text-white text-sm hover:bg-accent/90 transition-colors"

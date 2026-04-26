@@ -327,6 +327,9 @@ export interface PRReview {
   state: string;
   body: string;
   submittedAt: Time;
+  dismissed: boolean;
+  dismissedAt?: Time | null;
+  dismissReason: string;
 }
 
 export interface ReviewRequest {
@@ -365,4 +368,21 @@ export interface Webhook {
 
 export interface ListWebhooksResponse {
   webhooks: Webhook[];
+}
+
+// ─── Branch Protection ────────────────────────────────────────────────────────
+
+export interface BranchProtection {
+  id: string;
+  pattern: string;
+  requirePullRequest: boolean;
+  requiredApprovals: number;
+  dismissStaleReviews: boolean;
+  blockForcePush: boolean;
+  createdAt: Time;
+  updatedAt: Time;
+}
+
+export interface ListBranchProtectionsResponse {
+  rules: BranchProtection[];
 }

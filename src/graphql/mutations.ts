@@ -428,3 +428,36 @@ export const PING_WEBHOOK = gql`
     pingWebhook(owner: $owner, repo: $repo, id: $id)
   }
 `;
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────────
+
+export const DISMISS_REVIEW = gql`
+  mutation DismissReview($owner: String!, $repo: String!, $reviewId: String!, $reason: String) {
+    dismissReview(owner: $owner, repo: $repo, reviewId: $reviewId, reason: $reason) {
+      id state dismissed dismissedAt dismissReason
+      reviewer { uuid username avatarUrl displayName }
+    }
+  }
+`;
+
+// ─── Branch Protection ────────────────────────────────────────────────────────
+
+const BRANCH_PROTECTION_FIELDS = `id pattern requirePullRequest requiredApprovals dismissStaleReviews blockForcePush createdAt updatedAt`;
+
+export const CREATE_BRANCH_PROTECTION = gql`
+  mutation CreateBranchProtection($input: CreateBranchProtectionInput!) {
+    createBranchProtection(input: $input) { ${BRANCH_PROTECTION_FIELDS} }
+  }
+`;
+
+export const UPDATE_BRANCH_PROTECTION = gql`
+  mutation UpdateBranchProtection($input: UpdateBranchProtectionInput!) {
+    updateBranchProtection(input: $input) { ${BRANCH_PROTECTION_FIELDS} }
+  }
+`;
+
+export const DELETE_BRANCH_PROTECTION = gql`
+  mutation DeleteBranchProtection($owner: String!, $repo: String!, $id: String!) {
+    deleteBranchProtection(owner: $owner, repo: $repo, id: $id)
+  }
+`;

@@ -388,7 +388,7 @@ export const LIST_PR_REVIEWS = gql`
   query ListPRReviews($owner: String!, $repo: String!, $number: Int!) {
     listPRReviews(owner: $owner, repo: $repo, number: $number) {
       reviews {
-        id state body submittedAt
+        id state body submittedAt dismissed dismissedAt dismissReason
         reviewer { ${USER_FIELDS} }
       }
     }
@@ -404,6 +404,26 @@ export const LIST_REVIEW_REQUESTS = gql`
         requestedBy { ${USER_FIELDS} }
         createdAt
       }
+    }
+  }
+`;
+
+// ─── Branch Protection ───────────────────────────────────────────────────────
+
+export const LIST_BRANCH_PROTECTIONS = gql`
+  query ListBranchProtections($owner: String!, $repo: String!) {
+    listBranchProtections(owner: $owner, repo: $repo) {
+      rules {
+        id pattern requirePullRequest requiredApprovals dismissStaleReviews blockForcePush createdAt updatedAt
+      }
+    }
+  }
+`;
+
+export const GET_BRANCH_PROTECTION = gql`
+  query GetBranchProtection($owner: String!, $repo: String!, $id: String!) {
+    getBranchProtection(owner: $owner, repo: $repo, id: $id) {
+      id pattern requirePullRequest requiredApprovals dismissStaleReviews blockForcePush createdAt updatedAt
     }
   }
 `;

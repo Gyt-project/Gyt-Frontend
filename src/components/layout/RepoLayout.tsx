@@ -8,9 +8,11 @@ import {
   Code2, GitCommitHorizontal, GitBranch, Tag,
   CircleDot, GitPullRequest, Settings, BookMarked, Tags,
 } from 'lucide-react';
+import { useQuery } from '@apollo/client';
 import PageLayout from './PageLayout';
-import { Repository } from '@/types';
+import { Repository, ListCollaboratorsResponse } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { LIST_COLLABORATORS } from '@/graphql/queries';
 
 interface RepoLayoutProps {
   owner: string;
@@ -33,8 +35,23 @@ export default function RepoLayout({ owner, repo, repository, children }: RepoLa
   const pathname = usePathname();
   const { user } = useAuth();
   const base = `/${owner}/${repo}`;
+  const isOwner = user?.username === owner;
 
-  const tabs = user?.username === owner
+  const { data: collabData } = useQuery<{ listCollaborators: ListCollaboratorsResponse }>(
+    LIST_COLLABORATORS,
+    {
+      variables: { owner, name: repo },
+      skip: !user || isOwner,
+    }
+  );
+
+  const myAccess = collabData?.listCollaborators.collaborators.find(
+    (c) => c.username === user?.username
+  )?.accessLevel;
+
+  const canSeeSettings = isOwner || myAccess === 'admin';
+
+  const tabs = canSeeSettings
     ? [...baseTabs, { label: 'Settings', href: '/settings', icon: <Settings size={14} /> }]
     : baseTabs;
 

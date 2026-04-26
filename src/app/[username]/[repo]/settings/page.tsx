@@ -1,20 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@apollo/client';
-import { Settings, Users, Webhook, AlertTriangle, Plus, Trash2, RefreshCw, Send } from 'lucide-react';
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client';
+import { Settings, Users, Webhook, AlertTriangle, Plus, Trash2, RefreshCw, Send, Shield } from 'lucide-react';
 import {
-  GET_REPOSITORY, LIST_BRANCHES, LIST_COLLABORATORS, LIST_WEBHOOKS,
+  GET_REPOSITORY, LIST_BRANCHES, LIST_COLLABORATORS, LIST_WEBHOOKS, LIST_BRANCH_PROTECTIONS, SEARCH_USERS,
 } from '@/graphql/queries';
 import {
   UPDATE_REPOSITORY, DELETE_REPOSITORY, RENAME_REPOSITORY, SET_DEFAULT_BRANCH,
   ADD_COLLABORATOR, REMOVE_COLLABORATOR, UPDATE_COLLABORATOR,
   CREATE_WEBHOOK, UPDATE_WEBHOOK, DELETE_WEBHOOK, PING_WEBHOOK,
+  CREATE_BRANCH_PROTECTION, UPDATE_BRANCH_PROTECTION, DELETE_BRANCH_PROTECTION,
 } from '@/graphql/mutations';
 import {
   Repository, Collaborator, Webhook as WebhookType, ListCollaboratorsResponse,
-  ListBranchesResponse, ListWebhooksResponse,
+  ListBranchesResponse, ListWebhooksResponse, BranchProtection, ListBranchProtectionsResponse,
+  User, ListUsersResponse,
 } from '@/types';
 import RepoLayout from '@/components/layout/RepoLayout';
 import Input from '@/components/ui/Input';
@@ -24,7 +26,7 @@ import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
 import { useAuth } from '@/context/AuthContext';
 
-const SECTIONS = ['General', 'Collaborators', 'Webhooks', 'Danger Zone'] as const;
+const SECTIONS = ['General', 'Collaborators', 'Branch Protection', 'Webhooks', 'Danger Zone'] as const;
 type Section = typeof SECTIONS[number];
 
 export default function RepoSettingsPage() {
@@ -33,10 +35,19 @@ export default function RepoSettingsPage() {
   const { user } = useAuth();
   const [section, setSection] = useState<Section>('General');
 
-  // Redirect non-owners
+  const { data: myCollabData } = useQuery<{ listCollaborators: ListCollaboratorsResponse }>(
+    LIST_COLLABORATORS,
+    { variables: { owner: username, name: repo }, skip: !user || user.username === username }
+  );
+  const myAccess = myCollabData?.listCollaborators.collaborators.find(
+    (c) => c.username === user?.username
+  )?.accessLevel;
+  const canAccess = !user || user.username === username || myAccess === 'admin';
+
+  // Redirect users without settings access
   useEffect(() => {
-    if (user && user.username !== username) router.push(`/${username}/${repo}`);
-  }, [user, username, repo, router]);
+    if (user && !canAccess) router.push(`/${username}/${repo}`);
+  }, [user, canAccess, username, repo, router]);
 
   const { data: repoData, loading: repoLoading, refetch: refetchRepo } = useQuery<{
     getRepository: Repository;
@@ -56,6 +67,12 @@ export default function RepoSettingsPage() {
   }>(LIST_WEBHOOKS, {
     variables: { owner: username, repo },
     skip: section !== 'Webhooks',
+  });
+  const { data: branchProtData, refetch: refetchBranchProt } = useQuery<{
+    listBranchProtections: ListBranchProtectionsResponse;
+  }>(LIST_BRANCH_PROTECTIONS, {
+    variables: { owner: username, repo },
+    skip: section !== 'Branch Protection',
   });
 
   const repository = repoData?.getRepository;
@@ -102,6 +119,14 @@ export default function RepoSettingsPage() {
                 repo={repo}
                 collaborators={collabData?.listCollaborators.collaborators ?? []}
                 onChanged={refetchCollabs}
+              />
+            )}
+            {section === 'Branch Protection' && (
+              <BranchProtectionSection
+                owner={username}
+                repo={repo}
+                rules={branchProtData?.listBranchProtections.rules ?? []}
+                onChanged={refetchBranchProt}
               />
             )}
             {section === 'Webhooks' && (
@@ -242,9 +267,48 @@ function CollaboratorsSection({
   const [showAdd, setShowAdd] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [accessLevel, setAccessLevel] = useState('read');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [searchUsers, { data: searchData, loading: searching }] = useLazyQuery<
+    { searchUsers: ListUsersResponse }
+  >(SEARCH_USERS, { fetchPolicy: 'network-only' });
+
+  const searchResults = (searchData?.searchUsers.users ?? []).filter(
+    (u) => u.username !== owner && !collaborators.some((c) => c.username === u.username)
+  );
+
+  function handleSearchChange(val: string) {
+    setSearchQuery(val);
+    setNewUsername(val);
+    if (val.trim().length >= 1) {
+      searchUsers({ variables: { query: val, perPage: 8 } });
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
+  }
+
+  function selectUser(u: User) {
+    setNewUsername(u.username);
+    setSearchQuery(u.username);
+    setShowDropdown(false);
+  }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, []);
 
   const [addCollab, { loading: adding }] = useMutation(ADD_COLLABORATOR, {
-    onCompleted: () => { onChanged(); setShowAdd(false); setNewUsername(''); },
+    onCompleted: () => { onChanged(); setShowAdd(false); setNewUsername(''); setSearchQuery(''); },
   });
   const [removeCollab] = useMutation(REMOVE_COLLABORATOR, { onCompleted: onChanged });
   const [updateCollab] = useMutation(UPDATE_COLLABORATOR, { onCompleted: onChanged });
@@ -305,14 +369,40 @@ function CollaboratorsSection({
         </div>
       )}
 
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add collaborator" size="sm">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setSearchQuery(''); setNewUsername(''); setShowDropdown(false); }} title="Add collaborator" size="sm">
         <div className="space-y-4">
-          <Input
-            label="Username"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            placeholder="Enter username"
-          />
+          <div ref={dropdownRef} className="relative">
+            <Input
+              label="Username"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search users..."
+              autoComplete="off"
+            />
+            {showDropdown && (
+              <div className="absolute z-50 top-full mt-1 w-full bg-canvas border border-border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                {searching && (
+                  <div className="px-3 py-2 text-xs text-fg-muted">Searching...</div>
+                )}
+                {!searching && searchResults.length === 0 && searchQuery.trim().length >= 1 && (
+                  <div className="px-3 py-2 text-xs text-fg-muted">No users found</div>
+                )}
+                {searchResults.map((u) => (
+                  <button
+                    key={u.uuid}
+                    type="button"
+                    onMouseDown={() => selectUser(u)}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-canvas-subtle flex items-center gap-2"
+                  >
+                    <span className="font-medium text-fg">{u.username}</span>
+                    {u.displayName && u.displayName !== u.username && (
+                      <span className="text-fg-muted text-xs">{u.displayName}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div>
             <p className="text-sm text-fg-muted mb-2">Access level</p>
             <div className="flex gap-4 text-sm">
@@ -480,6 +570,163 @@ function WebhooksSection({
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+// ─── Branch Protection ───────────────────────────────────────────────────────
+
+function BranchProtectionSection({
+  owner,
+  repo,
+  rules,
+  onChanged,
+}: {
+  owner: string;
+  repo: string;
+  rules: BranchProtection[];
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState<BranchProtection | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [pattern, setPattern] = useState('');
+  const [requirePR, setRequirePR] = useState(false);
+  const [requiredApprovals, setRequiredApprovals] = useState(0);
+  const [dismissStale, setDismissStale] = useState(false);
+  const [blockForcePush, setBlockForcePush] = useState(false);
+
+  const [createRule, { loading: creating }] = useMutation(CREATE_BRANCH_PROTECTION, { onCompleted: () => { onChanged(); resetForm(); } });
+  const [updateRule, { loading: updating }] = useMutation(UPDATE_BRANCH_PROTECTION, { onCompleted: () => { onChanged(); resetForm(); } });
+  const [deleteRule] = useMutation(DELETE_BRANCH_PROTECTION, { onCompleted: onChanged });
+
+  function resetForm() {
+    setShowForm(false);
+    setEditing(null);
+    setPattern('');
+    setRequirePR(false);
+    setRequiredApprovals(0);
+    setDismissStale(false);
+    setBlockForcePush(false);
+  }
+
+  function openCreate() {
+    resetForm();
+    setShowForm(true);
+  }
+
+  function openEdit(rule: BranchProtection) {
+    setEditing(rule);
+    setPattern(rule.pattern);
+    setRequirePR(rule.requirePullRequest);
+    setRequiredApprovals(rule.requiredApprovals);
+    setDismissStale(rule.dismissStaleReviews);
+    setBlockForcePush(rule.blockForcePush);
+    setShowForm(true);
+  }
+
+  function handleSubmit() {
+    if (!pattern.trim()) return;
+    if (editing) {
+      updateRule({ variables: { input: { owner, repo, id: editing.id, pattern, requirePullRequest: requirePR, requiredApprovals, dismissStaleReviews: dismissStale, blockForcePush } } });
+    } else {
+      createRule({ variables: { input: { owner, repo, pattern, requirePullRequest: requirePR, requiredApprovals, dismissStaleReviews: dismissStale, blockForcePush } } });
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-fg flex items-center gap-2"><Shield size={18} /> Branch Protection</h2>
+          <p className="text-sm text-fg-muted mt-1">Control who can push to matching branches and enforce review requirements.</p>
+        </div>
+        <Button size="sm" onClick={openCreate}><Plus size={14} className="mr-1" /> Add rule</Button>
+      </div>
+
+      {rules.length === 0 && !showForm && (
+        <div className="border border-border rounded-md p-6 text-center text-sm text-fg-muted">
+          No branch protection rules yet.
+        </div>
+      )}
+
+      {rules.map((rule) => (
+        <div key={rule.id} className="border border-border rounded-md p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono text-sm text-fg font-semibold">{rule.pattern}</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={() => openEdit(rule)}>Edit</Button>
+              <Button size="sm" variant="danger" onClick={() => deleteRule({ variables: { owner, repo, id: rule.id } })}>
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {rule.requirePullRequest && (
+              <span className="text-xs bg-canvas-subtle border border-border rounded px-2 py-0.5 text-fg-muted">Require PR</span>
+            )}
+            {rule.requiredApprovals > 0 && (
+              <span className="text-xs bg-canvas-subtle border border-border rounded px-2 py-0.5 text-fg-muted">{rule.requiredApprovals} required approval{rule.requiredApprovals > 1 ? 's' : ''}</span>
+            )}
+            {rule.dismissStaleReviews && (
+              <span className="text-xs bg-canvas-subtle border border-border rounded px-2 py-0.5 text-fg-muted">Dismiss stale reviews</span>
+            )}
+            {rule.blockForcePush && (
+              <span className="text-xs bg-canvas-subtle border border-border rounded px-2 py-0.5 text-fg-muted">Block force push</span>
+            )}
+          </div>
+        </div>
+      ))}
+
+      {showForm && (
+        <div className="border border-border rounded-md p-4 space-y-4">
+          <h3 className="text-sm font-semibold text-fg">{editing ? 'Edit rule' : 'New rule'}</h3>
+          <div>
+            <label className="block text-xs font-semibold text-fg-muted mb-1">Branch name pattern</label>
+            <input
+              value={pattern}
+              onChange={(e) => setPattern(e.target.value)}
+              placeholder="e.g. main or release/*"
+              className="w-full bg-canvas border border-border rounded px-3 py-1.5 text-sm text-fg placeholder:text-fg-muted focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            <p className="text-xs text-fg-muted mt-1">Supports wildcard patterns like <code className="font-mono">release/*</code></p>
+          </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={requirePR} onChange={(e) => setRequirePR(e.target.checked)} className="rounded" />
+              <span className="text-sm text-fg">Require a pull request before merging</span>
+            </label>
+            {requirePR && (
+              <div className="ml-6 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-fg">Required approvals:</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={requiredApprovals}
+                    onChange={(e) => setRequiredApprovals(parseInt(e.target.value) || 0)}
+                    className="w-16 bg-canvas border border-border rounded px-2 py-1 text-sm text-fg focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={dismissStale} onChange={(e) => setDismissStale(e.target.checked)} className="rounded" />
+                  <span className="text-sm text-fg">Dismiss stale reviews when new commits are pushed</span>
+                </label>
+              </div>
+            )}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={blockForcePush} onChange={(e) => setBlockForcePush(e.target.checked)} className="rounded" />
+              <span className="text-sm text-fg">Block force pushes</span>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
+            <Button size="sm" loading={creating || updating} disabled={!pattern.trim()} onClick={handleSubmit}>
+              {editing ? 'Save changes' : 'Create rule'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

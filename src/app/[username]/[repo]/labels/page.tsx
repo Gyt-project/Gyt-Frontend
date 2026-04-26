@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client';
 import { Plus, Pencil, Trash2, Check, X, RefreshCw } from 'lucide-react';
-import { LIST_LABELS, GET_REPOSITORY } from '@/graphql/queries';
+import { LIST_LABELS, GET_REPOSITORY, LIST_COLLABORATORS } from '@/graphql/queries';
 import { CREATE_LABEL, UPDATE_LABEL, DELETE_LABEL } from '@/graphql/mutations';
-import { Label, ListLabelsResponse, Repository } from '@/types';
+import { Label, ListLabelsResponse, Repository, ListCollaboratorsResponse } from '@/types';
 import RepoLayout from '@/components/layout/RepoLayout';
 import Spinner from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
@@ -245,6 +245,15 @@ export default function LabelsPage() {
   const { user } = useAuth();
   const isOwner = user?.username === username;
 
+  const { data: collabData } = useQuery<{ listCollaborators: ListCollaboratorsResponse }>(
+    LIST_COLLABORATORS,
+    { variables: { owner: username, name: repo }, skip: !user || isOwner }
+  );
+  const myAccess = collabData?.listCollaborators.collaborators.find(
+    (c) => c.username === user?.username
+  )?.accessLevel;
+  const canEdit = isOwner || myAccess === 'write' || myAccess === 'admin';
+
   const { data: repoData } = useQuery<{ getRepository: Repository }>(GET_REPOSITORY, {
     variables: { owner: username, name: repo },
   });
@@ -263,7 +272,7 @@ export default function LabelsPage() {
           <span className="text-sm text-fg-muted">{labels.length} label{labels.length !== 1 ? 's' : ''}</span>
         </div>
 
-        {isOwner && (
+        {canEdit && (
           <CreateLabelRow owner={username} repo={repo} onCreated={refetch} />
         )}
 
@@ -280,7 +289,7 @@ export default function LabelsPage() {
                   label={l}
                   owner={username}
                   repo={repo}
-                  canEdit={isOwner}
+                  canEdit={canEdit}
                   onChanged={refetch}
                 />
               ))}
