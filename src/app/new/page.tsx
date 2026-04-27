@@ -104,7 +104,8 @@ export default function NewRepoPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <form onSubmit={submit} className="space-y-6">
           {error && (
-              <ErrorAlert message={error} onDismiss={() => setError('')} />
+            <ErrorAlert message={error} onDismiss={() => setError('')} />
+          )}
 
           <div className="flex gap-2 items-end">
             {/* Owner dropdown */}
