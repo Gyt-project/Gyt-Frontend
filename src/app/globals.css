@@ -43,18 +43,49 @@ body {
 .animate-fade-up-delay-2  { animation: fade-up 0.45s ease-out 0.25s forwards; opacity: 0; }
 .glow-breathe             { animation: glow-breathe 6s ease-in-out infinite; }
 
-/* Markdown prose overrides */
-.prose { color: #cdd9e5; }
-.prose h1, .prose h2, .prose h3, .prose h4 { color: #cdd9e5; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; margin-top: 1.5em; }
+/* ── Markdown prose ────────────────────────────────────────── */
+/* Tailwind Preflight resets h1-h6 sizes/weights and ul/ol list-styles.
+   These rules restore them inside .prose containers.              */
+.prose { color: #cdd9e5; line-height: 1.7; }
+.prose h1 { font-size: 2em;    font-weight: 600; color: #cdd9e5; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; margin-top: 1.5em; margin-bottom: 0.5em; }
+.prose h2 { font-size: 1.5em;  font-weight: 600; color: #cdd9e5; border-bottom: 1px solid #30363d; padding-bottom: 0.3em; margin-top: 1.5em; margin-bottom: 0.5em; }
+.prose h3 { font-size: 1.25em; font-weight: 600; color: #cdd9e5; margin-top: 1.25em; margin-bottom: 0.4em; }
+.prose h4 { font-size: 1em;    font-weight: 600; color: #cdd9e5; margin-top: 1em;    margin-bottom: 0.25em; }
+.prose p  { margin-top: 0; margin-bottom: 1em; }
+.prose ul { list-style-type: disc;    padding-left: 1.5em; margin-bottom: 1em; }
+.prose ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+.prose li { margin-bottom: 0.25em; }
+.prose li > ul, .prose li > ol { margin-bottom: 0; }
+.prose strong { font-weight: 600; color: #cdd9e5; }
+.prose em { font-style: italic; }
 .prose a { color: #58a6ff; text-decoration: none; }
 .prose a:hover { text-decoration: underline; }
-.prose code { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 0.1em 0.4em; font-size: 0.875em; color: #e6edf3; }
-.prose pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; overflow-x: auto; }
-.prose pre code { background: none; border: none; padding: 0; }
-.prose blockquote { border-left: 4px solid #30363d; padding-left: 1rem; color: #768390; }
+.prose code { background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 0.1em 0.4em; font-size: 0.875em; color: #e6edf3; font-family: ui-monospace, SFMono-Regular, monospace; }
+.prose pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; overflow-x: auto; margin-bottom: 1em; }
+.prose pre code { background: none; border: none; padding: 0; font-size: 0.875em; }
+.prose blockquote { border-left: 4px solid #30363d; padding-left: 1rem; color: #768390; margin: 1em 0; }
 .prose img { border-radius: 4px; max-width: 100%; }
-.prose hr { border-color: #30363d; }
-.prose table { width: 100%; border-collapse: collapse; }
+.prose hr { border-color: #30363d; margin: 1.5em 0; }
+.prose table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
 .prose th, .prose td { border: 1px solid #30363d; padding: 0.5rem 0.75rem; }
 .prose th { background: #161b22; font-weight: 600; }
 .prose tr:nth-child(even) { background: #161b22; }
+
+/* ── Syntax highlighting — highlight.js GitHub Dark theme ───── */
+.hljs-keyword, .hljs-selector-tag, .hljs-deletion { color: #ff7b72; }
+.hljs-string, .hljs-attr, .hljs-template-variable, .hljs-addition { color: #a5d6ff; }
+.hljs-literal, .hljs-number, .hljs-boolean { color: #79c0ff; }
+.hljs-comment, .hljs-quote { color: #8b949e; font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-function > .hljs-title { color: #d2a8ff; }
+.hljs-title.class_, .hljs-class > .hljs-title { color: #ffa657; }
+.hljs-built_in, .hljs-name { color: #ffa657; }
+.hljs-type, .hljs-variable.language_ { color: #ff7b72; }
+.hljs-property, .hljs-attribute { color: #79c0ff; }
+.hljs-meta { color: #a5d6ff; }
+.hljs-symbol, .hljs-bullet, .hljs-link { color: #a5d6ff; }
+.hljs-operator, .hljs-punctuation { color: #cdd9e5; }
+.hljs-params { color: #cdd9e5; }
+.hljs-regexp { color: #a5d6ff; }
+.hljs-selector-id, .hljs-selector-class { color: #ffa657; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: bold; }

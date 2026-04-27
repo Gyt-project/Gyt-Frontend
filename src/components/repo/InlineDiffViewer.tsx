@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FileDiff as FileDiffType, PRComment, User } from '@/types';
 import { clsx } from 'clsx';
 import { FileText, Plus, RefreshCw, Trash2, ChevronDown, ChevronRight, Pencil, MessageSquare, Clock } from 'lucide-react';
@@ -9,6 +9,7 @@ import Textarea from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { formatRelativeTime } from '@/lib/utils';
+import { langFromPath, highlightLines } from '@/lib/syntax';
 
 export interface InlineDiffViewerProps {
   files: FileDiffType[];
@@ -258,6 +259,26 @@ export default function InlineDiffViewer({
           parsedMap?.get(normalizedFilePath) ??
           (file.oldPath ? parsedMap?.get(file.oldPath) : undefined) ??
           (normalizedOldPath ? parsedMap?.get(normalizedOldPath) : undefined);
+
+        // Syntax highlighting: collect content lines, highlight as a block, map back by index
+        const syntaxLang = langFromPath(file.path);
+        const syntaxMap = (() => {
+          if (!syntaxLang || !diffLines) return null;
+          const contentLines = diffLines
+            .filter((l) => l.type !== 'meta' && l.type !== 'hunk')
+            .map((l) => l.content);
+          if (contentLines.length === 0) return null;
+          const highlighted = highlightLines(contentLines, syntaxLang);
+          const map = new Map<number, string>();
+          let ci = 0;
+          diffLines.forEach((_, i) => {
+            if (diffLines[i].type !== 'meta' && diffLines[i].type !== 'hunk') {
+              map.set(i, highlighted[ci++] ?? '');
+            }
+          });
+          return map;
+        })();
+
         const isExp = expanded.has(file.path);
         const canExpand = !!diffLines;
         const fileInlineComments = inlineComments.filter(
@@ -430,7 +451,11 @@ export default function InlineDiffViewer({
                             </td>
                             <td className={clsx('py-px whitespace-pre overflow-hidden', bgClass)}>
                               <span className={clsx('pl-2 pr-1 select-none', prefixColor)}>{prefix}</span>
-                              <span className={textClass}>{line.content}</span>
+                              {syntaxMap?.has(i) ? (
+                                <span dangerouslySetInnerHTML={{ __html: syntaxMap.get(i)! }} />
+                              ) : (
+                                <span className={textClass}>{line.content}</span>
+                              )}
                             </td>
                           </tr>
 

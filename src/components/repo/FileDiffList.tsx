@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { FileDiff as FileDiffType } from '@/types';
 import { clsx } from 'clsx';
 import { FileText, Plus, RefreshCw, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { langFromPath, highlightLines } from '@/lib/syntax';
 
 interface FileDiffProps {
   files: FileDiffType[];
@@ -102,6 +103,26 @@ export default function FileDiffList({ files, patch, showStats = true }: FileDif
 
       {files.map((file) => {
         const diffLines = parsedMap?.get(file.path);
+
+        // Syntax highlighting
+        const syntaxLang = langFromPath(file.path);
+        const syntaxMap = (() => {
+          if (!syntaxLang || !diffLines) return null;
+          const contentLines = diffLines
+            .filter((l) => l.type !== 'meta' && l.type !== 'hunk')
+            .map((l) => l.content);
+          if (contentLines.length === 0) return null;
+          const highlighted = highlightLines(contentLines, syntaxLang);
+          const map = new Map<number, string>();
+          let ci = 0;
+          diffLines.forEach((_, i) => {
+            if (diffLines[i].type !== 'meta' && diffLines[i].type !== 'hunk') {
+              map.set(i, highlighted[ci++] ?? '');
+            }
+          });
+          return map;
+        })();
+
         const isExp = expanded.has(file.path);
         const canExpand = !!diffLines;
 
@@ -200,9 +221,13 @@ export default function FileDiffList({ files, patch, showStats = true }: FileDif
                             >
                               {line.newNo ?? ''}
                             </td>
-                            <td className={clsx('px-3 py-0.5 whitespace-pre', textClass)}>
+                            <td className={clsx('px-3 py-0.5 whitespace-pre', !syntaxMap ? textClass : bgClass)}>
                               <span className="mr-2 select-none opacity-60">{prefix}</span>
-                              {line.content}
+                              {syntaxMap?.has(i) ? (
+                                <span dangerouslySetInnerHTML={{ __html: syntaxMap.get(i)! }} />
+                              ) : (
+                                <span>{line.content}</span>
+                              )}
                             </td>
                           </tr>
                         );
