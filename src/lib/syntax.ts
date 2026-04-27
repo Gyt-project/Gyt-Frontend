@@ -77,20 +77,17 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Highlights an array of code lines as a single block (preserving cross-line context).
- * Returns an array of HTML strings, one per input line.
+ * Highlights an array of code lines, one line at a time.
+ * Returns an array of HTML strings (one per input line).
+ * Per-line approach avoids broken HTML from cross-line <span> tags.
  */
 export function highlightLines(lines: string[], language: string): string[] {
-  const code = lines.join('\n');
-  try {
-    const result = hljs.highlight(code, { language, ignoreIllegals: true });
-    // Split the highlighted HTML back by newline
-    // hljs does not produce multi-line span tags, so splitting on \n is safe
-    const parts = result.value.split('\n');
-    // Ensure output length matches input (hljs may trim trailing newlines)
-    while (parts.length < lines.length) parts.push('');
-    return parts.slice(0, lines.length);
-  } catch {
-    return lines.map(escapeHtml);
-  }
+  return lines.map((line) => {
+    if (!line) return '';
+    try {
+      return hljs.highlight(line, { language, ignoreIllegals: true }).value;
+    } catch {
+      return escapeHtml(line);
+    }
+  });
 }

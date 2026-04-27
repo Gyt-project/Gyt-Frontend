@@ -104,20 +104,21 @@ export default function FileDiffList({ files, patch, showStats = true }: FileDif
       {files.map((file) => {
         const diffLines = parsedMap?.get(file.path);
 
-        // Syntax highlighting
+        // Syntax highlighting — keyed by index in the no-meta filtered array
         const syntaxLang = langFromPath(file.path);
         const syntaxMap = (() => {
           if (!syntaxLang || !diffLines) return null;
-          const contentLines = diffLines
-            .filter((l) => l.type !== 'meta' && l.type !== 'hunk')
+          const filteredLines = diffLines.filter((l) => l.type !== 'meta');
+          const contentLines = filteredLines
+            .filter((l) => l.type !== 'hunk')
             .map((l) => l.content);
           if (contentLines.length === 0) return null;
           const highlighted = highlightLines(contentLines, syntaxLang);
           const map = new Map<number, string>();
           let ci = 0;
-          diffLines.forEach((_, i) => {
-            if (diffLines[i].type !== 'meta' && diffLines[i].type !== 'hunk') {
-              map.set(i, highlighted[ci++] ?? '');
+          filteredLines.forEach((line, fi) => {
+            if (line.type !== 'hunk') {
+              map.set(fi, highlighted[ci++] ?? '');
             }
           });
           return map;

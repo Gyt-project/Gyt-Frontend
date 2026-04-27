@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileDiff as FileDiffType, PRComment, User } from '@/types';
 import { clsx } from 'clsx';
 import { FileText, Plus, RefreshCw, Trash2, ChevronDown, ChevronRight, Pencil, MessageSquare, Clock } from 'lucide-react';
@@ -260,20 +260,23 @@ export default function InlineDiffViewer({
           (file.oldPath ? parsedMap?.get(file.oldPath) : undefined) ??
           (normalizedOldPath ? parsedMap?.get(normalizedOldPath) : undefined);
 
-        // Syntax highlighting: collect content lines, highlight as a block, map back by index
+        // Syntax highlighting — keyed by index in the no-meta filtered array
+        // (same index as used by the render loop below)
         const syntaxLang = langFromPath(file.path);
         const syntaxMap = (() => {
           if (!syntaxLang || !diffLines) return null;
-          const contentLines = diffLines
-            .filter((l) => l.type !== 'meta' && l.type !== 'hunk')
+          const filteredLines = diffLines.filter((l) => l.type !== 'meta');
+          const contentLines = filteredLines
+            .filter((l) => l.type !== 'hunk')
             .map((l) => l.content);
           if (contentLines.length === 0) return null;
           const highlighted = highlightLines(contentLines, syntaxLang);
           const map = new Map<number, string>();
           let ci = 0;
-          diffLines.forEach((_, i) => {
-            if (diffLines[i].type !== 'meta' && diffLines[i].type !== 'hunk') {
-              map.set(i, highlighted[ci++] ?? '');
+          filteredLines.forEach((line, fi) => {
+            // fi matches the i in diffLines.filter(no-meta).map((line, i) => ...)
+            if (line.type !== 'hunk') {
+              map.set(fi, highlighted[ci++] ?? '');
             }
           });
           return map;
