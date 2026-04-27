@@ -10,6 +10,8 @@ import { LOGIN } from '@/graphql/mutations';
 import { AuthResponse } from '@/types';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +26,7 @@ export default function LoginPage() {
       login(accessToken, refreshToken, user);
       router.push('/');
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => setError(formatError(err)),
   });
 
   const submit = (e: React.FormEvent) => {
@@ -66,9 +68,7 @@ export default function LoginPage() {
           className="bg-canvas-subtle border border-border rounded-xl p-6 space-y-4 shadow-2xl shadow-black/40 animate-fade-up-delay"
         >
           {error && (
-            <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">
-              {error}
-            </div>
+            <ErrorAlert message={error} onDismiss={() => setError('')} />
           )}
 
           <Input

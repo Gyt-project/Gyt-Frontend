@@ -13,7 +13,7 @@ export default function PageLayout({ children, className = '' }: PageLayoutProps
       <main className={`flex-1 ${className}`}>{children}</main>
       <footer className="border-t border-border py-6 text-center text-xs text-fg-muted">
         © 2026 Ygit ·{' '}
-        <span className="font-mono">ygit.lucamorgado.com</span>
+        <span className="font-mono">git.lucamorgado.com</span>
         {' '}· Built with ♥
       </footer>
     </div>

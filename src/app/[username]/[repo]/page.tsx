@@ -158,17 +158,17 @@ function RepoContent() {
   const { user } = useAuth();
   const path = searchParams.get('path') ?? '';
 
-  const { data: repoData, loading: repoLoading } = useQuery<{ getRepository: Repository }>(
+  const { data: repoData, loading: repoLoading, refetch: refetchRepo } = useQuery<{ getRepository: Repository }>(
     GET_REPOSITORY, { variables: { owner: username, name: repo }, context: { triggerNotFoundOn404: true } }
   );
 
-  const { data: branchData } = useQuery<{ getDefaultBranch: DefaultBranchResponse }>(
+  const { data: branchData, refetch: refetchDefaultBranch } = useQuery<{ getDefaultBranch: DefaultBranchResponse }>(
     GET_DEFAULT_BRANCH, {
       variables: { owner: username, name: repo },
     }
   );
 
-  const { data: branchesData, loading: branchesLoading } = useQuery<{ listBranches: ListBranchesResponse }>(
+  const { data: branchesData, loading: branchesLoading, refetch: refetchBranches } = useQuery<{ listBranches: ListBranchesResponse }>(
     LIST_BRANCHES, {
       variables: { owner: username, name: repo },
     }
@@ -181,7 +181,7 @@ function RepoContent() {
     ?? branchesData?.listBranches.branches[0]?.name
     ?? '';
 
-  const { data: treeData, loading: treeLoading } = useQuery<{ getRepositoryTree: RepoTreeResponse }>(
+  const { data: treeData, loading: treeLoading, refetch: refetchTree } = useQuery<{ getRepositoryTree: RepoTreeResponse }>(
     GET_REPO_TREE, {
       variables: { owner: username, name: repo, ref, path: path || undefined },
       skip: hasNoBranches || !ref,
@@ -192,7 +192,7 @@ function RepoContent() {
     GET_CLONE_URLS, { variables: { owner: username, name: repo } }
   );
 
-  const { data: statsData } = useQuery<{ getRepositoryStats: RepoStats }>(
+  const { data: statsData, refetch: refetchStats } = useQuery<{ getRepositoryStats: RepoStats }>(
     GET_REPO_STATS, {
       variables: { owner: username, name: repo },
     }
@@ -206,7 +206,7 @@ function RepoContent() {
     (e) => !e.isDir && /^readme(\.md)?$/i.test(e.name)
   );
 
-  const { data: readmeData } = useQuery<{ getFileBlob: FileBlob }>(
+  const { data: readmeData, refetch: refetchReadme } = useQuery<{ getFileBlob: FileBlob }>(
     GET_FILE_BLOB,
     {
       variables: { owner: username, name: repo, path: readmeEntry?.path, ref },
@@ -253,7 +253,16 @@ function RepoContent() {
 
   // ── SSE: push events ──────────────────────────────────────────────────────
   const [pushBanner, setPushBanner] = useState(false);
-  const handlePush = useCallback(() => { setPushBanner(true); }, []);
+  const handlePush = useCallback(() => {
+    // Silently refresh all data so the UI reflects the new state immediately.
+    refetchBranches();
+    refetchDefaultBranch();
+    refetchTree();
+    refetchStats();
+    refetchRepo();
+    refetchReadme();
+    setPushBanner(true);
+  }, [refetchBranches, refetchDefaultBranch, refetchTree, refetchStats, refetchRepo, refetchReadme]);
   const ssePushPath = username && repo ? `/ws/repo/${username}/${repo}` : null;
   useSSE(ssePushPath, (type) => { if (type === 'push') handlePush(); });
 
@@ -266,17 +275,9 @@ function RepoContent() {
             <RotateCw size={14} className="text-accent-fg" />
             New commits have been pushed to this repository.
           </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setPushBanner(false); window.location.reload(); }}
-              className="text-accent-fg hover:underline font-medium"
-            >
-              Refresh
-            </button>
-            <button onClick={() => setPushBanner(false)} className="text-fg-muted hover:text-fg">
-              <X size={14} />
-            </button>
-          </div>
+          <button onClick={() => setPushBanner(false)} className="text-fg-muted hover:text-fg">
+            <X size={14} />
+          </button>
         </div>
       )}
       {repoLoading || branchesLoading ? (

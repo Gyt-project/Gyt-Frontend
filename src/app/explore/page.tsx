@@ -45,7 +45,6 @@ function ExploreContent() {
   >(SEARCH_USERS);
 
   const doSearch = (query: string, p = 1) => {
-    if (!query.trim()) return;
     if (tab === 'repositories') {
       searchRepos({ variables: { query, page: p, perPage: PER_PAGE } });
     } else {
@@ -54,7 +53,7 @@ function ExploreContent() {
   };
 
   useEffect(() => {
-    if (submitted) doSearch(submitted, page);
+    doSearch(submitted, page);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, page, submitted]);
 
@@ -62,7 +61,7 @@ function ExploreContent() {
     e.preventDefault();
     setPage(1);
     setSubmitted(q);
-    router.replace(`/explore?q=${encodeURIComponent(q)}`);
+    router.replace(`/explore${q ? `?q=${encodeURIComponent(q)}` : ''}`);
     doSearch(q, 1);
   };
 
@@ -137,7 +136,7 @@ function ExploreContent() {
         {!loading && tab === 'repositories' && repos && (
           <div>
             {repos.repositories.length === 0 ? (
-              <p className="text-fg-muted text-sm text-center py-8">No repositories found for &quot;{submitted}&quot;</p>
+              <p className="text-fg-muted text-sm text-center py-8">{submitted ? `No repositories found for "${submitted}"` : 'No public repositories yet.'}</p>
             ) : (
               <>
                 <div className="border border-border rounded-md overflow-hidden mb-4">
@@ -158,7 +157,7 @@ function ExploreContent() {
         {!loading && tab === 'users' && users && (
           <div>
             {users.users.length === 0 ? (
-              <p className="text-fg-muted text-sm text-center py-8">No users found for &quot;{submitted}&quot;</p>
+            <p className="text-fg-muted text-sm text-center py-8">{submitted ? `No users found for "${submitted}"` : 'No users yet.'}</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {users.users.map((u) => (
@@ -180,12 +179,7 @@ function ExploreContent() {
           </div>
         )}
 
-        {!submitted && !loading && (
-          <div className="text-center py-12">
-            <Search size={40} className="text-fg-subtle mx-auto mb-4" />
-            <p className="text-fg-muted">Search for repositories and users</p>
-          </div>
-        )}
+
       </div>
     </PageLayout>
   );

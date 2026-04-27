@@ -12,6 +12,8 @@ import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -41,7 +43,7 @@ export default function SettingsPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => setError(formatError(err)),
   });
 
   const submit = (e: React.FormEvent) => {
@@ -105,9 +107,7 @@ export default function SettingsPage() {
           <div className="md:col-span-2">
             <form onSubmit={submit} className="space-y-5">
               {error && (
-                <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">
-                  {error}
-                </div>
+                <ErrorAlert message={error} onDismiss={() => setError('')} />
               )}
               {saved && (
                 <div className="bg-success-muted border border-success text-success-fg text-sm rounded-md px-3 py-2">

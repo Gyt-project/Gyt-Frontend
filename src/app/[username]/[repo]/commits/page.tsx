@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useLazyQuery } from '@apollo/client';
 import { Search } from 'lucide-react';
@@ -13,6 +13,7 @@ import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { Suspense } from 'react';
+import { useSSE } from '@/lib/useSSE';
 
 export default function CommitsPage() {
   return (
@@ -45,13 +46,18 @@ function CommitsContent() {
   const defaultBranch = branchData?.getDefaultBranch?.branchName
     ?? branchesData?.listBranches.branches[0]?.name;
   const ref = urlRef ?? defaultBranch ?? 'master';
-  const { data, loading } = useQuery<{ listCommits: ListCommitsResponse }>(LIST_COMMITS, {
+  const { data, loading, refetch: refetchCommits } = useQuery<{ listCommits: ListCommitsResponse }>(LIST_COMMITS, {
     variables: { owner: username, name: repo, ref, page, limit: 30 },
     skip: !!submitted || !defaultBranch,
   });
   const [searchCommits, { data: searchData, loading: searchLoading }] = useLazyQuery<
     { searchCommits: ListCommitsResponse }
   >(SEARCH_COMMITS);
+
+  // Live-refresh commit list when a push is detected on the current branch.
+  const sseWsPath = username && repo ? `/ws/repo/${username}/${repo}` : null;
+  const handlePush = useCallback(() => { if (!submitted) refetchCommits(); }, [submitted, refetchCommits]);
+  useSSE(sseWsPath, (type) => { if (type === 'push') handlePush(); });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

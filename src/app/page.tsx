@@ -154,10 +154,10 @@ function LandingPage() {
               <span className="ml-2 text-xs text-fg-muted font-mono">bash</span>
             </div>
             <div className="px-5 py-4 font-mono text-sm leading-7 text-fg-muted">
-              <p><span className="text-success-fg">$</span> git remote add origin git@ygit.lucamorgado.com/you/project.git</p>
+              <p><span className="text-success-fg">$</span> git remote add origin git@git.lucamorgado.com/you/project.git</p>
               <p><span className="text-success-fg">$</span> git push -u origin main</p>
               <p className="text-fg-muted/50">Enumerating objects: 4, done.</p>
-              <p className="text-accent-fg">To git@ygit.lucamorgado.com/you/project.git</p>
+              <p className="text-accent-fg">To git@git.lucamorgado.com/you/project.git</p>
               <p className="text-success-fg"> * [new branch] &nbsp;&nbsp;main -&gt; main</p>
             </div>
           </div>

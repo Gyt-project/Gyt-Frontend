@@ -10,6 +10,8 @@ import { REGISTER } from '@/graphql/mutations';
 import { AuthResponse } from '@/types';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,7 +29,7 @@ export default function RegisterPage() {
       login(accessToken, refreshToken, user);
       router.push('/');
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => setError(formatError(err)),
   });
 
   const submit = (e: React.FormEvent) => {
@@ -35,6 +37,14 @@ export default function RegisterPage() {
     setError('');
     if (!form.username || !form.email || !form.password) {
       setError('Username, email and password are required.');
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(form.username.toLowerCase())) {
+      setError('Username may only contain lowercase letters, digits, and hyphens, and must start and end with a letter or digit.');
+      return;
+    }
+    if (form.username.includes('--')) {
+      setError('Username must not contain consecutive hyphens.');
       return;
     }
     if (form.password.length < 8) {
@@ -83,9 +93,7 @@ export default function RegisterPage() {
           className="bg-canvas-subtle border border-border rounded-xl p-6 space-y-4 shadow-2xl shadow-black/40 animate-fade-up-delay"
         >
           {error && (
-            <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">
-              {error}
-            </div>
+            <ErrorAlert message={error} onDismiss={() => setError('')} />
           )}
 
           <Input
@@ -94,7 +102,7 @@ export default function RegisterPage() {
             autoComplete="username"
             value={form.username}
             onChange={update('username')}
-            hint="Only letters, numbers, hyphens and underscores."
+            hint="Only lowercase letters, digits, and hyphens. Must start and end with a letter or digit."
           />
 
           <Input

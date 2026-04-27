@@ -11,6 +11,8 @@ import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
 import { Building2 } from 'lucide-react';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function NewOrgPage() {
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function NewOrgPage() {
 
   const [createOrg, { loading }] = useMutation<{ createOrganization: Organization }>(CREATE_ORGANIZATION, {
     onCompleted: (d) => router.push(`/orgs/${d.createOrganization.name}`),
-    onError: (err) => setError(err.message),
+    onError: (err) => setError(formatError(err)),
   });
 
   if (!user) { router.push('/login'); return null; }
@@ -28,11 +30,20 @@ export default function NewOrgPage() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!form.name.trim()) { setError('Organization name is required.'); return; }
+    const name = form.name.trim().toLowerCase();
+    if (!name) { setError('Organization name is required.'); return; }
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(name)) {
+      setError('Organization name may only contain lowercase letters, digits, and hyphens, and must start and end with a letter or digit.');
+      return;
+    }
+    if (name.includes('--')) {
+      setError('Organization name must not contain consecutive hyphens.');
+      return;
+    }
     createOrg({
       variables: {
         input: {
-          name: form.name,
+          name,
           description: form.description || undefined,
         },
       },
@@ -68,9 +79,7 @@ export default function NewOrgPage() {
       <div className="max-w-lg mx-auto px-4 py-8">
         <form onSubmit={submit} className="space-y-5">
           {error && (
-            <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">
-              {error}
-            </div>
+            <ErrorAlert message={error} onDismiss={() => setError('')} />
           )}
 
           <Input
@@ -78,7 +87,7 @@ export default function NewOrgPage() {
             placeholder="my-org"
             value={form.name}
             onChange={update('name')}
-            hint="Cannot be changed later."
+            hint="Only lowercase letters, digits, and hyphens. Cannot be changed later."
           />
 
           <Textarea

@@ -205,13 +205,17 @@ export default function PullRequestPage() {
   );
 
   // ── SSE real-time updates ─────────────────────────────────────────────────
+  const [newCommitsBanner, setNewCommitsBanner] = useState(false);
   const ssePath = username && repo && prNumber ? `/ws/pr/${username}/${repo}/${prNumber}` : null;
   const handleSSEEvent = useCallback((type: string) => {
     if (type === 'comment_added') { refetchComments(); }
     else if (type === 'review_submitted') { refetchReviews(); refetchMergeEligibility(); }
     else if (type === 'review_request_changed') { refetchReviewRequests(); }
     else if (type === 'pr_status_changed') { refetchPR(); refetchMergeEligibility(); }
-    else if (type === 'new_commits') { refetchDiff(); refetchReviews(); refetchMergeEligibility(); }
+    else if (type === 'new_commits') {
+      setNewCommitsBanner(true);
+      refetchPR(); refetchDiff(); refetchReviews(); refetchMergeEligibility();
+    }
   }, [refetchComments, refetchReviews, refetchMergeEligibility, refetchReviewRequests, refetchPR, refetchDiff]);
   useSSE(ssePath, handleSSEEvent);
 
@@ -364,6 +368,17 @@ export default function PullRequestPage() {
 
   return (
     <RepoLayout owner={username} repo={repo} repository={repoData?.getRepository}>
+      {newCommitsBanner && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-accent-emphasis/40 bg-accent-subtle px-4 py-2.5 text-sm text-fg">
+          <span className="flex items-center gap-2">
+            <RotateCw size={14} className="text-accent-fg" />
+            New commits were pushed to this pull request.
+          </span>
+          <button onClick={() => setNewCommitsBanner(false)} className="text-fg-muted hover:text-fg">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       {loading ? (
         <div className="flex justify-center py-20"><Spinner size="lg" /></div>
       ) : !pr ? (

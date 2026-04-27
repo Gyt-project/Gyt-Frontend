@@ -18,6 +18,8 @@ import Button from '@/components/ui/Button';
 import Avatar from '@/components/ui/Avatar';
 import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function OrgSettingsPage() {
   const { orgName } = useParams<{ orgName: string }>();
@@ -46,11 +48,11 @@ export default function OrgSettingsPage() {
 
   const [updateOrg, { loading: updating }] = useMutation(UPDATE_ORGANIZATION, {
     onCompleted: () => { setSaved(true); refetch(); setTimeout(() => setSaved(false), 3000); },
-    onError: (e) => setError(e.message),
+    onError: (e) => setError(formatError(e)),
   });
   const [deleteOrg] = useMutation(DELETE_ORGANIZATION, {
     onCompleted: () => router.push('/'),
-    onError: (e) => setError(e.message),
+    onError: (e) => setError(formatError(e)),
   });
   const [addMember, { loading: addingMember }] = useMutation(ADD_ORG_MEMBER, {
     onCompleted: () => { setAddModal(false); setAddForm({ username: '', role: 'member' }); refetchMembers(); },
@@ -84,7 +86,7 @@ export default function OrgSettingsPage() {
             <h2 className="text-sm font-semibold text-fg">General</h2>
           </div>
           <form onSubmit={submitOrg} className="px-4 py-4 space-y-4">
-            {error && <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded px-3 py-2">{error}</div>}
+            {error && <ErrorAlert message={error} onDismiss={() => setError('')} />}
             {saved && <div className="bg-success-muted border border-success text-success-fg text-sm rounded px-3 py-2">Saved!</div>}
             <Input label="Display name" value={form.displayName} onChange={update('displayName')} />
             <Textarea label="Description" value={form.description} onChange={update('description')} rows={3} />

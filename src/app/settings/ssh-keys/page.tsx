@@ -15,6 +15,8 @@ import Modal from '@/components/ui/Modal';
 import Spinner from '@/components/ui/Spinner';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatDate } from '@/lib/utils';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function SSHKeysPage() {
   const router = useRouter();
@@ -30,7 +32,7 @@ export default function SSHKeysPage() {
 
   const [addKey, { loading: adding }] = useMutation(ADD_SSH_KEY, {
     onCompleted: () => { setModalOpen(false); setForm({ name: '', publicKey: '' }); refetch(); },
-    onError: (err) => setFormError(err.message),
+    onError: (err) => setFormError(formatError(err)),
   });
 
   const [deleteKey] = useMutation(DELETE_SSH_KEY, {
@@ -120,9 +122,7 @@ export default function SSHKeysPage() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Add new SSH key">
         <form onSubmit={submit} className="space-y-4">
           {formError && (
-            <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded px-3 py-2">
-              {formError}
-            </div>
+            <ErrorAlert message={formError} onDismiss={() => setFormError('')} />
           )}
           <Input
             label="Title"

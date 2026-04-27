@@ -13,6 +13,8 @@ import Input from '@/components/ui/Input';
 import Textarea from '@/components/ui/Textarea';
 import Button from '@/components/ui/Button';
 import { clsx } from 'clsx';
+import ErrorAlert from '@/components/ui/ErrorAlert';
+import { formatError } from '@/lib/formatError';
 
 export default function NewRepoPage() {
   const router = useRouter();
@@ -35,21 +37,29 @@ export default function NewRepoPage() {
     onCompleted: (data) => {
       router.push(`/${data.createRepository.ownerName}/${data.createRepository.name}`);
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => setError(formatError(err)),
   });
+
+  const normalizedName = form.name.replace(/ /g, '-');
+  const showHint = form.name.includes(' ');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!form.name.trim()) { setError('Repository name is required.'); return; }
-    if (!/^[a-zA-Z0-9_.-]+$/.test(form.name)) {
-      setError('Repository name can only contain letters, numbers, hyphens, underscores, and periods.');
+    if (!normalizedName.trim()) { setError('Repository name is required.'); return; }
+    const lower = normalizedName.toLowerCase();
+    if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/.test(lower)) {
+      setError('Repository name may only contain lowercase letters, digits, and hyphens, and must start and end with a letter or digit.');
+      return;
+    }
+    if (lower.includes('--')) {
+      setError('Repository name must not contain consecutive hyphens.');
       return;
     }
     createRepo({
       variables: {
         input: {
-          name: form.name,
+          name: normalizedName,
           description: form.description || undefined,
           isPrivate: form.isPrivate,
           orgName: owner || undefined,
@@ -94,10 +104,7 @@ export default function NewRepoPage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <form onSubmit={submit} className="space-y-6">
           {error && (
-            <div className="bg-danger-muted border border-danger text-danger-fg text-sm rounded-md px-3 py-2">
-              {error}
-            </div>
-          )}
+              <ErrorAlert message={error} onDismiss={() => setError('')} />
 
           <div className="flex gap-2 items-end">
             {/* Owner dropdown */}
@@ -120,13 +127,19 @@ export default function NewRepoPage() {
               </div>
             </div>
             <span className="text-fg-muted text-lg mb-1.5">/</span>
-            <Input
-              label="Repository name"
-              placeholder="my-project"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="flex-1"
-            />
+            <div className="flex-1">
+              <Input
+                label="Repository name"
+                placeholder="my-project"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              />
+              {showHint && (
+                <p className="text-xs text-fg-muted mt-1">
+                  Will be created as <span className="font-mono text-fg">{normalizedName}</span>
+                </p>
+              )}
+            </div>
           </div>
 
           <Textarea

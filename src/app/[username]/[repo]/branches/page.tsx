@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client';
 import { GitBranch, Plus, Trash2, X } from 'lucide-react';
@@ -15,6 +15,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { shortSha } from '@/lib/utils';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useSSE } from '@/lib/useSSE';
 
 export default function BranchesPage() {
   const { username, repo } = useParams<{ username: string; repo: string }>();
@@ -38,6 +39,11 @@ export default function BranchesPage() {
   );
 
   const [createBranch, { loading: creating }] = useMutation(CREATE_BRANCH);
+
+  // Live-refresh branch list when a push is detected.
+  const sseWsPath = username && repo ? `/ws/repo/${username}/${repo}` : null;
+  const handlePush = useCallback(() => { refetch(); }, [refetch]);
+  useSSE(sseWsPath, (type) => { if (type === 'push') handlePush(); });
 
   const defaultBranch = defaultData?.getDefaultBranch?.branchName ?? 'master';
   const branches = branchData?.listBranches.branches ?? [];
