@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { formatBytes, getLanguageFromPath } from '@/lib/utils';
+import { langFromPath, highlightLines } from '@/lib/syntax';
 
 interface CodeViewerProps {
   content: string;
@@ -15,6 +16,13 @@ export default function CodeViewer({ content, path, size, isBinary }: CodeViewer
   const [copied, setCopied] = useState(false);
   const lang = getLanguageFromPath(path);
   const lines = content.split('\n');
+
+  const highlightedLines = useMemo(() => {
+    const syntaxLang = langFromPath(path);
+    if (!syntaxLang || !content.trim()) return null;
+    return highlightLines(lines, syntaxLang);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, path]);
 
   const copy = () => {
     navigator.clipboard.writeText(content);
@@ -56,7 +64,9 @@ export default function CodeViewer({ content, path, size, isBinary }: CodeViewer
                   {i + 1}
                 </td>
                 <td className="pl-4 pr-4 py-0.5 whitespace-pre text-fg">
-                  {line || ' '}
+                  {highlightedLines
+                    ? <span dangerouslySetInnerHTML={{ __html: highlightedLines[i] || ' ' }} />
+                    : (line || ' ')}
                 </td>
               </tr>
             ))}
